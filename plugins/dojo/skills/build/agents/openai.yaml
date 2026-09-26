@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dojo: build"
+  short_description: "Render and serve the course site"
+policy:
+  allow_implicit_invocation: false

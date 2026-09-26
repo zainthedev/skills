@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dojo: next"
+  short_description: "Generate the next syllabus item"
+policy:
+  allow_implicit_invocation: false

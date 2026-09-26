@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dojo: quiz"
+  short_description: "Retrieval practice with feedback"
+policy:
+  allow_implicit_invocation: false

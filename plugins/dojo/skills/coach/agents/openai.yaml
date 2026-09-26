@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dojo: coach"
+  short_description: "Hints and questions, never the answer"
+policy:
+  allow_implicit_invocation: false

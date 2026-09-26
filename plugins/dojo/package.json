@@ -1,0 +1,13 @@
+{
+  "name": "dojo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripts bundled with the dojo Claude Code plugin. No dependencies; run natively on Node 24 or Bun.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test \"scripts/tests/*.test.ts\""
+  }
+}

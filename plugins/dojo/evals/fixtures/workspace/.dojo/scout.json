@@ -1,0 +1,15 @@
+{
+  "dojo_scout": "0.1.0",
+  "topic": "Node and Express",
+  "generated": "2026-09-25T09:20:00Z",
+  "subreddits": ["node", "learnjavascript"],
+  "keywords": ["learn express", "express tutorial"],
+  "budget": {"seconds": 240, "used_seconds": 180, "exhausted": false},
+  "sources": [{"kind": "reddit-search", "url": "https://www.reddit.com/r/learnjavascript/search.rss?q=learn+express&restrict_sr=on&sort=top&t=all", "status": "ok", "note": ""}],
+  "threads": [],
+  "resources": [
+    {"url": "https://expressjs.com/en/guide/routing.html", "domain": "expressjs.com", "title": "Express guide: Routing", "mentions": [], "breadth": 15, "depth": 15, "curated": ["r/learnjavascript wiki"], "freshness": {"checked": "2026-09-25", "last_modified": "2026-09-01", "method": "last-modified"}, "hn_mentions_24m": 3, "objective_score": 66, "max_objective": 70},
+    {"url": "https://fullstackopen.com/en/part3", "domain": "fullstackopen.com", "title": "Full Stack Open, part 3", "mentions": [], "breadth": 9, "depth": 15, "curated": [], "freshness": {"checked": "2026-09-25", "last_modified": "2026-09-10", "method": "github"}, "hn_mentions_24m": 2, "objective_score": 58, "max_objective": 70}
+  ],
+  "thin_evidence": false
+}

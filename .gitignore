@@ -1,0 +1,4 @@
+node_modules/
+plugins/*/evals/results/
+.DS_Store
+.serena/

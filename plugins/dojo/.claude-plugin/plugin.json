@@ -1,0 +1,12 @@
+{
+  "name": "dojo",
+  "displayName": "Dojo",
+  "version": "0.1.0",
+  "description": "Odin-Project-style learning courses for technical topics: curated free resources, projects, retrieval practice, and a coach that never gives the answer.",
+  "author": {
+    "name": "Zain Hill"
+  },
+  "repository": "https://github.com/zainthedev/skills",
+  "license": "MIT",
+  "keywords": ["learning", "curriculum", "odin-project", "education", "coach", "retrieval-practice"]
+}

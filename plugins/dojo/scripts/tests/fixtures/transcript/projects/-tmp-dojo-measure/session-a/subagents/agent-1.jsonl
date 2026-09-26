@@ -1,0 +1,2 @@
+{"type":"assistant","timestamp":"2026-09-25T11:15:00.000Z","sessionId":"session-a","uuid":"s1","isSidechain":true,"message":{"id":"msg_s1","role":"assistant","usage":{"input_tokens":1000,"output_tokens":300,"cache_creation_input_tokens":0,"cache_read_input_tokens":500}}}
+{"type":"assistant","timestamp":"2026-09-25T09:00:00.000Z","sessionId":"session-a","uuid":"s0","isSidechain":true,"message":{"id":"msg_s0","role":"assistant","usage":{"input_tokens":999,"output_tokens":999,"cache_creation_input_tokens":999,"cache_read_input_tokens":999}}}
