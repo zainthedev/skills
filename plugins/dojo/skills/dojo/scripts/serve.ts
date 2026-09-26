@@ -4,7 +4,7 @@
 
 import { spawn } from "node:child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AddressInfo } from "node:net";
@@ -291,7 +291,7 @@ function writePid(workspace: string, url: string): void {
 
 function removePid(workspace: string): void {
   const record = readPid(workspace);
-  if (record && record.pid === process.pid) unlinkSync(pidPath(workspace));
+  if (record && record.pid === process.pid) rmSync(pidPath(workspace), { force: true });
 }
 
 async function main(): Promise<number> {
@@ -321,14 +321,14 @@ async function main(): Promise<number> {
     } else {
       console.log("no dojo server running");
     }
-    if (existsSync(pidPath(workspace))) unlinkSync(pidPath(workspace));
+    rmSync(pidPath(workspace), { force: true });
     return 0;
   }
   if (confirmed && existing) {
     console.log(existing.url);
     return 0;
   }
-  if (existsSync(pidPath(workspace))) unlinkSync(pidPath(workspace));
+  rmSync(pidPath(workspace), { force: true });
   const site = typeof args.values.site === "string" ? args.values.site : undefined;
   if (args.values.detach) {
     console.log(await detach(workspace, port, site));
