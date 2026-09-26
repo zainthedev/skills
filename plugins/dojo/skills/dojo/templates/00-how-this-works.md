@@ -44,7 +44,7 @@ If you want a tutor that explains on demand, dojo is not that tool, and it says 
 | `/dojo-next` | Asks whether you finished the last item, then generates the next one in the syllabus |
 | `/dojo-quiz [ID or section]` | Retrieval practice with feedback after each attempt |
 | `/dojo-coach` | Hints and questions on the current item; never a solution |
-| `/dojo-build` | Renders this workspace to a browsable site with a done button |
+| `/dojo-build` | Starts this course's site again, for example after a restart of your computer |
 
 Generating an item costs tokens; the command shows an estimate first. Learning from it costs only your time.
 

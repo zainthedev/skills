@@ -3,7 +3,7 @@ status: accepted
 ---
 # Research budgets are fixed by item type; there is no depth question
 
-Intake no longer asks how deep the research should go, and the profile has no `depth` field. Each pass has one budget set by what it produces: a lesson 8 searches and 12 fetches, a project 4 and 6, a syllabus 16 and 24, the figures the old standard depth used. The measured runs of 2026-09-26 put a quick, standard and deep lesson at 212k, 221k and 270k weighted tokens, inside the noise of a single run, because the caps are rarely reached: what a pass costs is the context it carries, not the fetches it makes. A question whose answer barely changes the cost, and never the lesson, is machinery to cut (the tiebreaker in CONTEXT.md). The token table shrinks from depth by level to item type by level, and the estimate the commands quote needs one lookup.
+Intake no longer asks how deep the research should go, and the profile has no `depth` field. Each pass has one budget set by what it produces: a lesson 8 searches and 12 fetches, a project 4 and 6, a syllabus 16 and 24, the figures the old standard depth used. The measured runs of 2026-09-26 put a quick, standard and deep lesson at 166k, 173k and 209k weighted tokens, inside the noise of a single run, because the caps are rarely reached: what a pass costs is the context it carries, not the fetches it makes. A question whose answer barely changes the cost, and never the lesson, is machinery to cut (the tiebreaker in CONTEXT.md). The token table shrinks from depth by level to item type by level, and the estimate the commands quote needs one lookup.
 
 ## Considered options
 

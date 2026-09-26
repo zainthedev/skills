@@ -45,3 +45,6 @@ export const LEDGER_TYPES = ["docs", "guide", "course", "book", "video", "intera
 
 export const ID_PATTERN = /^[LPC]\d{2}$/;
 export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// The quiz log a new workspace starts with; quiz-log.ts appends one row per session.
+export const QUIZ_LOG_HEADER = "# Quiz log\n\n| Date | Scope | Predicted | Actual | Notes |\n|------|-------|-----------|--------|-------|\n";

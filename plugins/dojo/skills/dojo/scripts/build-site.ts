@@ -59,13 +59,59 @@ function badge(status: string): string {
   return `<span class="badge badge-${escapeHtml(status)}">${escapeHtml(status)}</span>`;
 }
 
-function doneControl(item: SyllabusItem, hasFile: boolean): string {
+// A small status mark for the sidebar; the status stays readable as text for
+// screen readers, so the colour is never the only signal.
+function statusDot(status: string): string {
+  return `<span class="status-dot status-dot-${escapeHtml(status)}" aria-hidden="true"></span><span class="visually-hidden">(${escapeHtml(status)})</span>`;
+}
+
+function progressBar(done: number, total: number): string {
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+  return `<div class="progress" role="progressbar" aria-label="Course progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><span style="width: ${percent}%"></span></div>`;
+}
+
+// `next` is the page to open once the item is marked done from the end of a page.
+function doneControl(item: SyllabusItem, hasFile: boolean, next = ""): string {
   const undo = hasFile ? "generated" : "planned";
   const label = item.status === "done" ? "Mark not done" : "Mark done";
   const target = item.status === "done" ? undo : "done";
+  const nextAttr = next && target === "done" ? ` data-next="${escapeHtml(next)}"` : "";
   return (
-    `<span class="done-control"><button type="button" class="done-button" data-id="${escapeHtml(item.id)}" data-status="${target}">${label}</button>` +
+    `<span class="done-control"><button type="button" class="done-button" data-id="${escapeHtml(item.id)}" data-status="${target}"${nextAttr}>${label}</button>` +
     `<span class="done-notice" role="status" aria-live="polite" hidden></span></span>`
+  );
+}
+
+// The first item not yet done, in course order: what the learner works on now.
+function focusItem(site: Site): SyllabusItem | null {
+  return site.syllabus.items.find((it) => it.status !== "done") ?? null;
+}
+
+const STEP_LABEL = /^(Why|How|Do):\s*/;
+
+// Turns one Assignment item, a bold link followed by Why, How and Do lines
+// joined with <br>, into a card with labelled rows. Returns null when the
+// item does not have that shape, such as a project's requirement.
+export function assignmentCard(inner: string): string | null {
+  const nestAt = inner.search(/\n<(ul|ol)>/);
+  const text = nestAt >= 0 ? inner.slice(0, nestAt) : inner;
+  const nested = nestAt >= 0 ? inner.slice(nestAt) : "";
+  const [title, ...lines] = text.split(/<br>\n?/);
+  const steps: { label: string; html: string }[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    const m = STEP_LABEL.exec(line);
+    // The label moves into its own cell, so the line's first word starts the row.
+    if (m) steps.push({ label: m[1], html: line.slice(m[0].length).replace(/^[a-z]/, (c) => c.toUpperCase()) });
+    else if (steps.length > 0 && line !== "") steps[steps.length - 1].html += ` ${line}`;
+    else if (line !== "") return null;
+  }
+  if (steps.length === 0) return null;
+  const host = /href="https?:\/\/([^/"?#]+)/.exec(title)?.[1]?.replace(/^www\./, "");
+  const rows = steps.map((st) => `<div class="step step-${st.label.toLowerCase()}"><dt>${st.label}</dt><dd>${st.html}</dd></div>`).join("");
+  return (
+    `<div class="assignment-card"><p class="assignment-title">${title.trim()}${host ? ` <span class="assignment-host">${escapeHtml(host)}</span>` : ""}</p>` +
+    `<dl class="assignment-steps">${rows}</dl>${nested}</div>`
   );
 }
 
@@ -79,23 +125,33 @@ function rewriteLink(href: string): string {
 function sidebar(site: Site, currentHref: string | null, root: string): string {
   const total = site.syllabus.items.length;
   const done = site.syllabus.items.filter((it) => it.status === "done").length;
+  const currentItem = site.pages.find((p) => p.href === currentHref)?.item ?? null;
+  // The section left open: the page's own, else the one holding the item in progress.
+  const openSection = (currentItem ?? focusItem(site))?.section ?? site.syllabus.sections[0]?.number;
   const parts: string[] = [];
   parts.push(`<nav class="sidebar" aria-label="Syllabus">`);
   parts.push(`<p class="sidebar-title"><a href="${root}index.html"${currentHref === "index.html" ? ' aria-current="page"' : ""}>${escapeHtml(site.courseTitle)}</a></p>`);
   parts.push(`<p class="sidebar-progress">${done} of ${total} done</p>`);
+  parts.push(progressBar(done, total));
   parts.push(`<ul class="sidebar-top"><li><a href="${root}how-this-works.html"${currentHref === "how-this-works.html" ? ' aria-current="page"' : ""}>How this course works</a></li></ul>`);
   for (const section of site.syllabus.sections) {
-    parts.push(`<section class="sidebar-section"><h2>${escapeHtml(section.heading)}</h2><ol class="sidebar-items">`);
-    for (const item of site.syllabus.items.filter((it) => it.section === section.number)) {
+    const items = site.syllabus.items.filter((it) => it.section === section.number);
+    const sectionDone = items.filter((it) => it.status === "done").length;
+    const open = section.number === openSection ? " open" : "";
+    parts.push(
+      `<details class="sidebar-section"${open}><summary><span class="sidebar-section-title">${escapeHtml(section.heading)}</span> ` +
+        `<span class="sidebar-section-count" aria-label="${sectionDone} of ${items.length} done">${sectionDone}/${items.length}</span></summary><ol class="sidebar-items">`,
+    );
+    for (const item of items) {
       const page = site.pageByItem.get(item.id);
-      const label = `<span class="item-id">${escapeHtml(item.id)}</span> ${escapeHtml(item.title)}`;
+      const label = `${statusDot(item.status)}<span class="item-id">${escapeHtml(item.id)}</span> <span class="item-title">${escapeHtml(item.title)}</span>`;
       const current = page && page.href === currentHref;
       const link = page
         ? `<a href="${root}${page.href}"${current ? ' aria-current="page"' : ""}>${label}</a>`
         : `<span class="sidebar-planned">${label}</span>`;
-      parts.push(`<li class="status-${escapeHtml(item.status)}${current ? " is-current" : ""}">${link} ${badge(item.status)}</li>`);
+      parts.push(`<li class="status-${escapeHtml(item.status)}${current ? " is-current" : ""}">${link}</li>`);
     }
-    parts.push(`</ol></section>`);
+    parts.push(`</ol></details>`);
   }
   parts.push(`</nav>`);
   return parts.join("\n");
@@ -128,6 +184,7 @@ ${main}
 
 function revealDecorator(sidecar: Sidecar | null): (info: ListItemInfo, html: string) => string {
   return (info, html) => {
+    if (info.section === "Assignment" && info.ordered && info.depth === 0) return assignmentCard(html) ?? html;
     if (!sidecar || !info.ordered || info.depth !== 0) return html;
     const list = info.section === "Before you start" ? sidecar.prediction : info.section === "Retrieval practice" ? sidecar.retrieval : null;
     if (!list) return html;
@@ -160,6 +217,11 @@ function itemPage(site: Site, page: Page, index: number): string {
     .join("\n");
   const hours = item.hours === null ? "" : ` <span class="item-hours">${item.hours} h</span>`;
   const doneOn = item.done ? ` <span class="item-done-date">done ${escapeHtml(item.done)}</span>` : "";
+  const nextHref = next ? `${root}${next.href}` : "";
+  const finish =
+    item.status === "done"
+      ? `<section class="finish controls"><p>Done on ${escapeHtml(item.done)}.${next ? ` <a href="${nextHref}">Next: ${escapeHtml(next.item!.id)} ${escapeHtml(next.item!.title)}</a>` : ""}</p></section>`
+      : `<section class="finish controls"><p class="finish-prompt">Finished with this ${escapeHtml(item.type === "checkpoint" ? "checkpoint" : item.type === "lesson" ? "lesson" : "project")}?</p>${doneControl(item, true, nextHref)}</section>`;
   const main = `<header class="item-header controls">
 <p class="item-meta"><span class="item-id">${escapeHtml(item.id)}</span> <span class="item-type">${escapeHtml(item.type)}</span> <span class="item-section">Section ${item.section}: ${escapeHtml(item.sectionTitle)}</span>${hours} ${badge(item.status)}${doneOn}</p>
 ${doneControl(item, true)}
@@ -167,6 +229,7 @@ ${doneControl(item, true)}
 <article class="item-body item-${escapeHtml(item.type)}">
 ${body}
 </article>
+${finish}
 <footer class="pager controls">
 ${pager}
 </footer>`;
@@ -179,7 +242,20 @@ function indexPage(site: Site): string {
   parts.push(`<header class="course-header"><h1>${escapeHtml(site.courseTitle)}</h1>`);
   if (goal) parts.push(`<div class="course-goal"><h2>Goal</h2>${goal}</div>`);
   const done = site.syllabus.items.filter((it) => it.status === "done").length;
-  parts.push(`<p class="course-progress">${done} of ${site.syllabus.items.length} items done. Start with <a href="how-this-works.html">how this course works</a>.</p></header>`);
+  parts.push(`<p class="course-progress">${done} of ${site.syllabus.items.length} items done. New here? Start with <a href="how-this-works.html">how this course works</a>.</p>`);
+  parts.push(progressBar(done, site.syllabus.items.length), `</header>`);
+  const focus = focusItem(site);
+  if (focus) {
+    const page = site.pageByItem.get(focus.id);
+    const meta = `<span class="item-id">${escapeHtml(focus.id)}</span> ${escapeHtml(focus.type)}${focus.hours === null ? "" : `, ${focus.hours} h`}`;
+    parts.push(
+      page
+        ? `<section class="continue"><p class="continue-label">Continue</p><p class="continue-title"><a href="${page.href}">${escapeHtml(focus.title)}</a></p><p class="continue-meta">${meta}</p></section>`
+        : `<section class="continue continue-next"><p class="continue-label">Next up</p><p class="continue-title">${escapeHtml(focus.title)}</p><p class="continue-meta">${meta}. Run <code>/dojo-next</code> in your agent to generate it.</p></section>`,
+    );
+  } else if (site.syllabus.items.length > 0) {
+    parts.push(`<section class="continue"><p class="continue-label">Course complete</p><p class="continue-title">Every item is done.</p></section>`);
+  }
   for (const section of site.syllabus.sections) {
     parts.push(`<section class="syllabus-section"><h2>${escapeHtml(section.heading)}</h2>`);
     parts.push(`<table class="syllabus"><thead><tr><th>ID</th><th>Type</th><th>Title</th><th>Hours</th><th>Status</th><th>Done</th><th class="controls">Action</th></tr></thead><tbody>`);

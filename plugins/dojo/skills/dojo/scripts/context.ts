@@ -19,9 +19,8 @@ const USAGE = `usage: context.ts [workspace] <ID | syllabus> [--top N] [--json]
 
 Prints the digest for a research pass: the learner's profile, the section
 plan, the previous items' overviews and prompts, the ledger, and the scout's
-top resources for the item (--top, default 12; 25 for the syllabus). For a
-checkpoint it prints the sampled lessons' prompts, answers, heading anchors
-and assignment titles instead of the ledger and scout. "quiz" prints up to
+top resources for the item (--top, default 12; 25 for the syllabus). A
+checkpoint has no digest: checkpoint.ts writes it. "quiz" prints up to
 --cap (default 10) retrieval prompts with their answers and sources for the
 scope: one lesson, one section's lessons, or every done lesson (generated ones
 when none is done), interleaved so neighbours come from different lessons.
@@ -60,14 +59,15 @@ interface PreviousDigest {
   introduction: string;
 }
 
-interface SampledLesson {
+export interface SampledLesson {
   id: string;
+  section: number;
   title: string;
   file: string;
   prompts: { text: string; answer: string }[];
-  // Heading anchors the re-read list can point at, and the assignment's resource titles.
+  // Heading anchors a re-read pointer can name, and the assignment's resources in order.
   anchors: string[];
-  assignment: string[];
+  assignment: { title: string; url: string }[];
 }
 
 export interface QuizPrompt {
@@ -92,7 +92,6 @@ export interface Digest {
   profile: { level: string; researchModel: string; goal: string; experience: string; notes: string; topic: string };
   section: { number: number; title: string; items: { id: string; type: string; title: string; status: string; hours: number | null }[] } | null;
   previous: PreviousDigest[];
-  sampled: SampledLesson[];
   ledger: { rows: { score: number | null; type: string; title: string; url: string; freshness: string; version: string; usedIn: string[] }[]; excluded: { title: string; reason: string }[]; fetched: number | null; structureSources: string[] };
   scout: { total: number; thin: boolean; generated: string; resources: { score: number; max: number; title: string | null; url: string; threads: number; newest: string | null; curated: string[]; updated: string | null; hn: number; excerpt: string; authorOnly: boolean }[] } | null;
 }
@@ -146,7 +145,7 @@ function previousDigest(workspace: string, syllabus: Syllabus, id: string): Prev
   };
 }
 
-function sampledLesson(workspace: string, syllabus: Syllabus, id: string): SampledLesson | null {
+export function sampledLesson(workspace: string, syllabus: Syllabus, id: string): SampledLesson | null {
   const item = findItem(syllabus.items, id);
   if (!item || item.type !== "lesson") return null;
   const file = findItemFile(workspace, item.id, item.type);
@@ -159,11 +158,19 @@ function sampledLesson(workspace: string, syllabus: Syllabus, id: string): Sampl
   const prompts = retrieval ? listItems(retrieval).filter((it) => it.ordered) : [];
   return {
     id: item.id,
+    section: item.section,
     title: item.title,
     file: `../lessons/${basename(file)}`,
     prompts: prompts.map((it, i) => ({ text: stripLink(it.text), answer: sidecar?.retrieval[i] ? itemText(sidecar.retrieval[i]) : "" })),
     anchors: headingAnchors(doc.lines.slice(doc.frontmatterLines).join("\n")).map((a) => `#${a}`),
-    assignment: assignment ? listItems(assignment).filter((it) => it.ordered).map((it) => stripLink(it.text.replace(/^\*\*|\*\*\s*$/g, "").trim())) : [],
+    assignment: assignment
+      ? listItems(assignment)
+          .filter((it) => it.ordered)
+          .map((it) => {
+            const link = it.text.replace(/^\*\*|\*\*\s*$/g, "").trim();
+            return { title: stripLink(link), url: /^\[[^\]]+\]\(([^)\s]+)\)/.exec(link)?.[1] ?? "" };
+          })
+      : [],
   };
 }
 
@@ -291,7 +298,6 @@ export function buildDigest(workspace: string, target: string, top?: number): Di
       item: null,
       section: null,
       previous: [],
-      sampled: [],
       ledger: syllabus ? ledgerDigest(workspace, syllabus) : { rows: [], excluded: [], fetched: null, structureSources: [] },
       scout: scoutDigest(readScout(workspace), top ?? 25, profile.topic),
     };
@@ -299,25 +305,13 @@ export function buildDigest(workspace: string, target: string, top?: number): Di
   if (!syllabus) throw new Error(`no syllabus.md in ${workspace}; run /dojo-plan first`);
   const item: SyllabusItem | null = findItem(syllabus.items, target);
   if (!item) throw new Error(`no item ${target} in the syllabus`);
+  if (item.type === "checkpoint") throw new Error(`${item.id} is a checkpoint, which needs no digest; run checkpoint.ts ${item.id} to write it`);
   const info = describeItem(workspace, syllabus, item);
   const section = {
     number: item.section,
     title: item.sectionTitle,
     items: itemsInSection(syllabus.items, item.section).map((it) => ({ id: it.id, type: it.type, title: it.title, status: it.status, hours: it.hours })),
   };
-  if (item.type === "checkpoint") {
-    const ids = [...(info.samples?.section ?? []), ...(info.samples?.previousSection ?? [])];
-    return {
-      ...base,
-      kind: "item",
-      item: info,
-      section,
-      previous: [],
-      sampled: ids.map((id) => sampledLesson(workspace, syllabus, id)).filter((s): s is SampledLesson => s !== null),
-      ledger: { rows: [], excluded: [], fetched: null, structureSources: [] },
-      scout: null,
-    };
-  }
   const previous = info.previous
     .slice(-2)
     .map((id) => previousDigest(workspace, syllabus, id))
@@ -328,7 +322,6 @@ export function buildDigest(workspace: string, target: string, top?: number): Di
     item: info,
     section,
     previous,
-    sampled: [],
     ledger: ledgerDigest(workspace, syllabus),
     scout: scoutDigest(readScout(workspace), top ?? 12, item.title),
   };
@@ -367,39 +360,26 @@ export function formatDigest(workspace: string, d: Digest): string {
     }
   }
 
-  if (d.sampled.length > 0) {
-    out.push("## Sampled lessons: prompts and answers");
-    for (const lesson of d.sampled) {
-      out.push(`### ${lesson.id} ${lesson.title} (link target: ${lesson.file}#retrieval-practice)`);
-      lesson.prompts.forEach((pr, i) => out.push(`${i + 1}. ${pr.text}`, `   Answer: ${pr.answer || "missing"}`));
-      if (lesson.anchors.length > 0) out.push(`Anchors for the re-read list: ${lesson.anchors.join(", ")}`);
-      if (lesson.assignment.length > 0) out.push(`Assignment: ${lesson.assignment.map((t, i) => `${i + 1}. ${t}`).join("; ")}`);
-      out.push("");
-    }
+  out.push(`## Ledger (${d.ledger.rows.length} rows${d.ledger.fetched === null ? "" : `, ${d.ledger.fetched} URLs fetched so far`})`);
+  if (d.ledger.rows.length > 0) {
+    out.push("| Score | Type | Resource | Freshness | Version | Used in |", "|-------|------|----------|-----------|---------|---------|");
+    for (const r of d.ledger.rows) out.push(`| ${r.score ?? ""} | ${r.type} | [${r.title}](${r.url}) | ${r.freshness} | ${r.version} | ${r.usedIn.join(", ")} |`);
   }
-
-  if (d.kind === "syllabus" || (d.item && d.item.type !== "checkpoint")) {
-    out.push(`## Ledger (${d.ledger.rows.length} rows${d.ledger.fetched === null ? "" : `, ${d.ledger.fetched} URLs fetched so far`})`);
-    if (d.ledger.rows.length > 0) {
-      out.push("| Score | Type | Resource | Freshness | Version | Used in |", "|-------|------|----------|-----------|---------|---------|");
-      for (const r of d.ledger.rows) out.push(`| ${r.score ?? ""} | ${r.type} | [${r.title}](${r.url}) | ${r.freshness} | ${r.version} | ${r.usedIn.join(", ")} |`);
+  for (const e of d.ledger.excluded) out.push(`- Excluded: ${e.title}: ${e.reason}`);
+  if (d.ledger.structureSources.length > 0) out.push(`Structure sources: ${d.ledger.structureSources.join(", ")}`);
+  out.push("");
+  if (d.scout) {
+    out.push(`## Scout: top ${d.scout.resources.length} of ${d.scout.total} resources (thin evidence: ${d.scout.thin}; generated ${d.scout.generated})`);
+    out.push("Threads is how many distinct threads or pages named it; Newest is the latest dated mention; the excerpt is the best-ranked reply's line. \"single author\" marks the rubric's self-promotion penalty.");
+    out.push("| Score | Resource | Threads | Newest | Curated | Updated | HN | Excerpt |", "|-------|----------|---------|--------|---------|---------|----|---------|");
+    for (const r of d.scout.resources) {
+      const flag = r.authorOnly ? " (single author)" : "";
+      out.push(`| ${r.score}/${r.max} | [${r.title ?? r.url}](${r.url})${flag} | ${r.threads} | ${r.newest ?? "unknown"} | ${r.curated.join("; ")} | ${r.updated ?? "unknown"} | ${r.hn} | ${r.excerpt.replace(/\|/g, "\\|")} |`);
     }
-    for (const e of d.ledger.excluded) out.push(`- Excluded: ${e.title}: ${e.reason}`);
-    if (d.ledger.structureSources.length > 0) out.push(`Structure sources: ${d.ledger.structureSources.join(", ")}`);
-    out.push("");
-    if (d.scout) {
-      out.push(`## Scout: top ${d.scout.resources.length} of ${d.scout.total} resources (thin evidence: ${d.scout.thin}; generated ${d.scout.generated})`);
-      out.push("Threads is how many distinct threads or pages named it; Newest is the latest dated mention; the excerpt is the best-ranked reply's line. \"single author\" marks the rubric's self-promotion penalty.");
-      out.push("| Score | Resource | Threads | Newest | Curated | Updated | HN | Excerpt |", "|-------|----------|---------|--------|---------|---------|----|---------|");
-      for (const r of d.scout.resources) {
-        const flag = r.authorOnly ? " (single author)" : "";
-        out.push(`| ${r.score}/${r.max} | [${r.title ?? r.url}](${r.url})${flag} | ${r.threads} | ${r.newest ?? "unknown"} | ${r.curated.join("; ")} | ${r.updated ?? "unknown"} | ${r.hn} | ${r.excerpt.replace(/\|/g, "\\|")} |`);
-      }
-    } else {
-      out.push("## Scout: no .dojo/scout.json; research from the ledger and the structure sources");
-    }
-    out.push("");
+  } else {
+    out.push("## Scout: no .dojo/scout.json; research from the ledger and the structure sources");
   }
+  out.push("");
   return out.join("\n").trimEnd() + "\n";
 }
 

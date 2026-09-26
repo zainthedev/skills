@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { describeItem, readSyllabus } from "../skills/dojo/scripts/next-item.ts";
+import { describeItem, readSyllabus, tokenEstimate } from "../skills/dojo/scripts/next-item.ts";
 import { WORKSPACE_FIXTURE, removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
 test("default output is the next planned item with its target path", () => {
@@ -75,4 +75,15 @@ test("describeItem works programmatically", () => {
   assert.equal(info.sectionTitle, "Node fundamentals");
   assert.equal(info.hours, 0.5);
   assert.equal(info.path, join(WORKSPACE_FIXTURE, "checkpoints", "C01-section-1.md"));
+});
+
+test("a single item carries its TOKENS.md estimate at the profile's level", () => {
+  const checkpoint = JSON.parse(runScript("next-item.ts", [WORKSPACE_FIXTURE, "--id", "C01"]).stdout);
+  assert.match(checkpoint.estimate, /^\d+k weighted \(/);
+  const table = "| Item | Level | Weighted | Basis |\n|---|---|---|---|\n| lesson | beginner | 300k | estimate |\n| project, with a starter | beginner | 360k | measured |\n";
+  assert.equal(tokenEstimate("lesson", "beginner", table), "300k weighted (estimate)");
+  assert.equal(tokenEstimate("completion-project", "beginner", table), "360k weighted (measured)");
+  assert.equal(tokenEstimate("project", "beginner", table), "360k weighted (measured; upper bound, this project has no starter)");
+  assert.equal(tokenEstimate("lesson", "advanced", table), null);
+  assert.equal(tokenEstimate("lesson", "", table), null);
 });

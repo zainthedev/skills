@@ -1,7 +1,8 @@
 // PreToolUse hook registered by dojo-coach on Claude Code for the rest of the session (ADR 0002).
 // Every tool call passes through it. A short list of read-only tools is allowed; a shell command
-// is allowed only when it is one plain call to a read-only dojo script; everything else, MCP
-// tools included, is denied. Any error, including unreadable input, exits 2, which Claude Code
+// is allowed only when it is one plain call to a dojo script on the coach's list, which read
+// the workspace or, for quiz-log.ts, append one row to the quiz log; everything else, file
+// edits and MCP tools included, is denied. Any error, including unreadable input, exits 2, which Claude Code
 // treats as a block, so a broken guard fails closed. Runs on Node 24+ or Bun.
 import { realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
@@ -25,8 +26,9 @@ export const ALLOWED_TOOLS: ReadonlySet<string> = new Set([
   "ListMcpResourcesTool",
   "ReadMcpResourceTool",
 ]);
-const FILE_TOOLS: ReadonlySet<string> = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
-export const READ_ONLY_SCRIPTS: ReadonlySet<string> = new Set(["next-item.ts", "lint.ts", "measure.ts"]);
+// quiz-log.ts writes one row to quiz-log.md and nothing else, so a /dojo-quiz later in a
+// coach session can record its result; context.ts prints the quiz.
+export const COACH_SCRIPTS: ReadonlySet<string> = new Set(["next-item.ts", "lint.ts", "measure.ts", "context.ts", "quiz-log.ts"]);
 // Anything that could chain, redirect, substitute or continue a command.
 const SHELL_OPERATORS = /[;&|<>`$(){}\n\r\\]/;
 const REASON =
@@ -55,7 +57,7 @@ function tokens(command: string): string[] | null {
 export function decideBash(command: string, cwd: string): Decision {
   if (SHELL_OPERATORS.test(command)) return deny(`${REASON} Shell operators are not allowed; run one dojo script per call.`);
   const parts = tokens(command);
-  if (!parts || parts.length < 2) return deny(`${REASON} Shell commands are limited to dojo's read-only scripts.`);
+  if (!parts || parts.length < 2) return deny(`${REASON} Shell commands are limited to the coach's dojo scripts.`);
   const [runtime, script] = parts;
   if (runtime !== "node" && runtime !== "bun") return deny(`${REASON} Shell commands are limited to node or bun running a dojo script.`);
   if (script.startsWith("-")) return deny(`${REASON} Runtime flags are not allowed.`);
@@ -65,7 +67,7 @@ export function decideBash(command: string, cwd: string): Decision {
   } catch {
     return deny(`${REASON} ${script} is not an existing dojo script.`);
   }
-  if (!READ_ONLY_SCRIPTS.has(basename(real))) return deny(`${REASON} ${basename(real)} is not one of the read-only scripts (${[...READ_ONLY_SCRIPTS].join(", ")}).`);
+  if (!COACH_SCRIPTS.has(basename(real))) return deny(`${REASON} ${basename(real)} is not one of the coach's scripts (${[...COACH_SCRIPTS].join(", ")}).`);
   if (basename(dirname(real)) !== "scripts" || basename(dirname(dirname(real))) !== "dojo") {
     return deny(`${REASON} ${real} is not inside the dojo skill's scripts directory.`);
   }
@@ -77,11 +79,6 @@ export function decide(input: HookInput): Decision {
   if (tool === "") return deny(`${REASON} The hook input named no tool.`);
   const args = input.tool_input && typeof input.tool_input === "object" ? (input.tool_input as Record<string, unknown>) : {};
   if (ALLOWED_TOOLS.has(tool)) return { allow: true };
-  if (FILE_TOOLS.has(tool)) {
-    const target = String(args["file_path"] ?? args["notebook_path"] ?? "");
-    if (basename(target) === "quiz-log.md") return { allow: true };
-    return deny(REASON);
-  }
   if (tool === "Bash") return decideBash(String(args["command"] ?? ""), typeof input.cwd === "string" && input.cwd !== "" ? input.cwd : process.cwd());
   return deny(`${REASON} ${tool} is not on the coach's allowed list.`);
 }

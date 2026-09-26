@@ -4,7 +4,7 @@ Zain Hill's agent skills. Each folder under `plugins/` bundles the skills that b
 
 ## Install
 
-Pick one route; installing both leaves you with every skill twice.
+On Claude Code, use the plugin: it carries hooks that skills.sh cannot install. On every other agent, use skills.sh. Using both for different agents is fine, but do not point skills.sh at Claude Code as well, or every skill shows up twice.
 
 **Claude Code**: add the marketplace once, then install only the plugins you want.
 
@@ -33,7 +33,7 @@ Each plugin's README opens with a Quick start.
 
 ## Maintaining
 
-`scripts/link-skills.sh` symlinks every skill in the repo into `~/.claude/skills` and `~/.agents/skills`, so a `git pull` updates them. It is for working on the skills, not an installer.
+`scripts/link-skills.sh` symlinks every skill in the repo into `~/.claude/skills` and `~/.agents/skills`, so a `git pull` updates them. It is for working on the skills, not an installer: it links skills only, so plugin hooks do not come with it, and with the plugin also installed Claude Code lists every skill twice.
 
 Each plugin keeps its own vocabulary in a `CONTEXT.md`, its decisions in `docs/adr/`, and its design in `docs/spec.md`. The map of contexts is [CONTEXT-MAP.md](CONTEXT-MAP.md).
 

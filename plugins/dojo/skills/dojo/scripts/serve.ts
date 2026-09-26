@@ -2,9 +2,11 @@
 // Serves the built site on 127.0.0.1 and accepts the done button's request,
 // which marks the syllabus row and rebuilds the site.
 
+import { spawn } from "node:child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AddressInfo } from "node:net";
 import { buildSite } from "./build-site.ts";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
@@ -13,13 +15,16 @@ import { requireWorkspace } from "./lib/workspace.ts";
 import { markItem } from "./mark-done.ts";
 import { describeItem, readSyllabus, relativeItem } from "./next-item.ts";
 
-const USAGE = `usage: serve.ts <workspace> [--port 4321] [--site <dir>] [--stop]
+const USAGE = `usage: serve.ts <workspace> [--port 4321] [--site <dir>] [--detach | --stop]
 
 Builds the site, then serves it on http://127.0.0.1:<port>/ and prints the URL.
 POST /api/done with {"id": "L01"} (optional "status", "date") marks the item
 and rebuilds; GET /api/status lists the items. The PID is written to
-.dojo/serve.pid; if that process is alive, the existing URL is printed and
-nothing new starts. --stop stops the running server. --port 0 picks a free port.`;
+.dojo/serve.pid; when that server still answers for this workspace, its URL is
+printed and nothing new starts. --detach starts the server in its own process
+group, so it outlives the shell or agent session that ran the command, prints
+the URL and exits; the server's output goes to .dojo/serve.log. --stop stops
+the running server. --port 0 picks a free port.`;
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -79,6 +84,47 @@ export function isAlive(pid: number): boolean {
   } catch (error) {
     return (error as { code?: string }).code === "EPERM";
   }
+}
+
+// True when the PID file's server still answers at its URL for this workspace.
+// A live PID alone is not enough: after a reboot the number can belong to an
+// unrelated process, which must never be reported as the site or sent SIGTERM.
+export async function confirmServer(record: PidRecord, workspace: string, timeoutMs = 1500): Promise<boolean> {
+  if (!isAlive(record.pid) || !/^http:\/\/127\.0\.0\.1:\d+\/$/.test(record.url)) return false;
+  try {
+    const res = await fetch(`${record.url}api/status`, { signal: AbortSignal.timeout(timeoutMs) });
+    const body = (await res.json()) as { pid?: unknown; workspace?: unknown };
+    return body.pid === record.pid && typeof body.workspace === "string" && resolve(body.workspace) === resolve(workspace);
+  } catch {
+    return false;
+  }
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+// Starts this script again in its own process group with output to
+// .dojo/serve.log, then waits for the child to write its PID file.
+async function detach(workspace: string, port: number, site: string | undefined): Promise<string> {
+  mkdirSync(join(workspace, ".dojo"), { recursive: true });
+  const logPath = join(workspace, ".dojo", "serve.log");
+  const log = openSync(logPath, "w");
+  const args = [...process.execArgv, fileURLToPath(import.meta.url), workspace, "--port", String(port), ...(site ? ["--site", site] : [])];
+  const child = spawn(process.execPath, args, { detached: true, stdio: ["ignore", log, log] });
+  closeSync(log);
+  let exited: number | null = null;
+  child.on("exit", (code) => {
+    exited = code ?? 1;
+  });
+  child.unref();
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const record = readPid(workspace);
+    if (record && record.pid === child.pid && record.url) return record.url;
+    if (exited !== null) break;
+    await sleep(100);
+  }
+  const tail = existsSync(logPath) ? readFileSync(logPath, "utf8").trim().split("\n").slice(-3).join(" ") : "";
+  throw new Error(`the detached server did not start${tail ? `: ${tail}` : ""}; see ${logPath}`);
 }
 
 // True when the request came from a page this server served: the Host header
@@ -159,7 +205,7 @@ export function startServer(opts: ServeOptions): Promise<RunningServer> {
       }
       if (url.pathname === "/api/status" && req.method === "GET") {
         const syllabus = readSyllabus(workspace);
-        sendJson(res, 200, { ok: true, items: syllabus.items.map((it) => relativeItem(workspace, describeItem(workspace, syllabus, it))) });
+        sendJson(res, 200, { ok: true, pid: process.pid, workspace, items: syllabus.items.map((it) => relativeItem(workspace, describeItem(workspace, syllabus, it))) });
         return;
       }
       if (url.pathname === "/api/done") {
@@ -253,6 +299,7 @@ async function main(): Promise<number> {
     port: { type: "string", default: "4321" },
     site: { type: "string" },
     stop: { type: "boolean" },
+    detach: { type: "boolean" },
   });
   if (args.values.help) {
     console.log(USAGE);
@@ -264,23 +311,31 @@ async function main(): Promise<number> {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw Object.assign(new Error("--port must be an integer from 0 to 65535"), { code: 2 });
 
   const existing = readPid(workspace);
+  const confirmed = existing !== null && (await confirmServer(existing, workspace));
   if (args.values.stop) {
-    if (existing && isAlive(existing.pid)) {
+    if (confirmed && existing) {
       process.kill(existing.pid, "SIGTERM");
       console.log(`stopped dojo server ${existing.pid}`);
+    } else if (existing && isAlive(existing.pid)) {
+      console.log(`no dojo server running; process ${existing.pid} in the stale PID file is something else and was left alone`);
     } else {
       console.log("no dojo server running");
     }
     if (existsSync(pidPath(workspace))) unlinkSync(pidPath(workspace));
     return 0;
   }
-  if (existing && isAlive(existing.pid)) {
-    console.log(existing.url || `dojo server already running as ${existing.pid}`);
+  if (confirmed && existing) {
+    console.log(existing.url);
     return 0;
   }
-  if (existing) unlinkSync(pidPath(workspace));
+  if (existsSync(pidPath(workspace))) unlinkSync(pidPath(workspace));
+  const site = typeof args.values.site === "string" ? args.values.site : undefined;
+  if (args.values.detach) {
+    console.log(await detach(workspace, port, site));
+    return 0;
+  }
 
-  const running = await startServer({ workspace, port, siteDir: typeof args.values.site === "string" ? args.values.site : undefined });
+  const running = await startServer({ workspace, port, siteDir: site });
   writePid(workspace, running.url);
   const shutdown = () => {
     removePid(workspace);

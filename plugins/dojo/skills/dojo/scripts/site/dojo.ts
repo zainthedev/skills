@@ -56,8 +56,13 @@ const setupDoneButtons = (): void => {
       button.disabled = true;
       try {
         const result = await markDone(id, status);
-        notice(button, result.status === "done" ? `Marked done ${result.done}. Reloading.` : `Status set to ${result.status}. Reloading.`);
-        window.setTimeout(() => window.location.reload(), 400);
+        // From the end of a page, marking done moves on to the next item.
+        const next = result.status === "done" ? button.dataset.next ?? "" : "";
+        notice(button, result.status === "done" ? `Marked done ${result.done}. ${next ? "Opening the next item." : "Reloading."}` : `Status set to ${result.status}. Reloading.`);
+        window.setTimeout(() => {
+          if (next) window.location.href = next;
+          else window.location.reload();
+        }, 400);
       } catch (error) {
         button.disabled = false;
         const message = error instanceof Error ? error.message : String(error);

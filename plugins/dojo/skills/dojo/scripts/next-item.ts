@@ -4,6 +4,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
 import {
   current,
@@ -13,12 +14,13 @@ import {
   parseSyllabus,
   previousInSection,
   previousSectionNumber,
+  splitRow,
   unfinishedBefore,
   syllabusPath,
   type Syllabus,
   type SyllabusItem,
 } from "./lib/syllabus.ts";
-import { itemPath, requireWorkspace, sidecarPath, starterDir } from "./lib/workspace.ts";
+import { itemPath, readProfile, requireWorkspace, sidecarPath, starterDir } from "./lib/workspace.ts";
 
 const USAGE = `usage: next-item.ts [workspace] [--current | --all | --id <ID>] [--json]
 
@@ -30,7 +32,8 @@ id, type, title, hours, status, done, section, sectionTitle, path (the target
 file), exists, previous (ids before it in its section), unfinished (ids of
 every earlier item still generated, not done, in any section) and, for a
 checkpoint, samples.section and samples.previousSection (lesson ids).
-"started" is the current UTC time, for the token report. The workspace
+"started" is the current UTC time, for the token report; "estimate" is the
+item type's row of TOKENS.md at the profile's level, or null. The workspace
 defaults to the one found at or above the current directory. Prints null when
 nothing matches.`;
 
@@ -88,6 +91,48 @@ export function relativeItem(workspace: string, info: ItemInfo): ItemInfo {
   return out;
 }
 
+const TOKENS_FILE = fileURLToPath(new URL("../TOKENS.md", import.meta.url));
+// The TOKENS.md row each item type is quoted from. A project without a
+// starter is unmeasured, so it quotes the starter row as an upper bound.
+const TOKEN_ROWS: Record<string, string> = {
+  lesson: "lesson",
+  "completion-project": "project, with a starter",
+  project: "project, with a starter",
+  capstone: "project, with a starter",
+  checkpoint: "checkpoint",
+};
+
+export function tokenEstimate(type: string, level: string, tokens?: string): string | null {
+  const row = TOKEN_ROWS[type];
+  if (!row || !level) return null;
+  let text = tokens;
+  if (text === undefined) {
+    try {
+      text = readFileSync(TOKENS_FILE, "utf8");
+    } catch {
+      return null;
+    }
+  }
+  for (const line of text.split("\n")) {
+    if (!line.trim().startsWith("|")) continue;
+    const [item, rowLevel, weighted, basis] = splitRow(line);
+    if (item !== row || rowLevel !== level) continue;
+    const bound = row === TOKEN_ROWS.project && type !== "completion-project" ? "; upper bound, this project has no starter" : "";
+    return `${weighted} weighted (${basis}${bound})`;
+  }
+  return null;
+}
+
+function withEstimate(workspace: string, info: ItemInfo): ItemInfo & { estimate: string | null } {
+  let level = "";
+  try {
+    level = readProfile(workspace).level;
+  } catch {
+    level = "";
+  }
+  return { ...info, estimate: tokenEstimate(info.type, level) };
+}
+
 function startedNow(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 }
@@ -118,7 +163,7 @@ async function main(): Promise<number> {
   if (wanted !== "") {
     const chosen = findItem(syllabus.items, wanted);
     if (!chosen) throw Object.assign(new Error(`no item ${wanted} in the syllabus`), { code: 1 });
-    console.log(JSON.stringify({ workspace, started: startedNow(), ...relativeItem(workspace, describeItem(workspace, syllabus, chosen)) }));
+    console.log(JSON.stringify({ workspace, started: startedNow(), ...withEstimate(workspace, relativeItem(workspace, describeItem(workspace, syllabus, chosen))) }));
     return 0;
   }
   const item = args.values.current ? current(syllabus.items) : nextPlanned(syllabus.items);
@@ -127,7 +172,7 @@ async function main(): Promise<number> {
     console.log("null");
     return 0;
   }
-  console.log(JSON.stringify({ workspace, started: startedNow(), ...relativeItem(workspace, describeItem(workspace, syllabus, item)) }));
+  console.log(JSON.stringify({ workspace, started: startedNow(), ...withEstimate(workspace, relativeItem(workspace, describeItem(workspace, syllabus, item))) }));
   return 0;
 }
 

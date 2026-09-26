@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fail, isMain, parseCli, requireString, runCli, textOrFile, todayIso } from "./lib/cli.ts";
-import { DATE_PATTERN, DOJO_VERSION, EVIDENCE_URL, LEVELS } from "./lib/constants.ts";
+import { DATE_PATTERN, DOJO_VERSION, EVIDENCE_URL, LEVELS, QUIZ_LOG_HEADER } from "./lib/constants.ts";
 import { withFrontmatter } from "./lib/frontmatter.ts";
 import { slugify } from "./lib/workspace.ts";
 
@@ -106,7 +106,7 @@ export function initWorkspace(opts: InitOptions): InitResult {
     }),
   );
 
-  write("quiz-log.md", "# Quiz log\n\n| Date | Scope | Predicted | Actual | Notes |\n|------|-------|-----------|--------|-------|\n");
+  write("quiz-log.md", QUIZ_LOG_HEADER);
 
   write(
     "ledger.md",

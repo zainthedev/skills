@@ -44,27 +44,8 @@ test("a lesson digest carries the profile, the section, the previous item, the l
   }
 });
 
-test("a checkpoint digest lists the sampled lessons' prompts with their answers", () => {
-  const d = buildDigest(WORKSPACE_FIXTURE, "C01");
-  assert.equal(d.item?.type, "checkpoint");
-  assert.equal(d.scout, null);
-  assert.ok(d.sampled.length >= 1);
-  const first = d.sampled[0];
-  assert.match(first.file, /^\.\.\/lessons\/L0\d-.*\.md$/);
-  assert.ok(first.prompts.length > 0);
-  assert.ok(first.prompts.every((p) => p.text.length > 0));
-  const text = formatDigest(WORKSPACE_FIXTURE, d);
-  assert.match(text, /## Sampled lessons: prompts and answers/);
-  assert.match(text, /Answer: /);
-});
-
-test("a checkpoint digest also carries each sampled lesson's anchors and assignment titles", () => {
-  const d = buildDigest(WORKSPACE_FIXTURE, "C01");
-  const first = d.sampled[0];
-  assert.ok(first.anchors.includes("#core-idea"), first.anchors.join(","));
-  assert.ok(first.anchors.includes("#retrieval-practice"));
-  assert.ok(first.assignment.length > 0);
-  assert.match(formatDigest(WORKSPACE_FIXTURE, d), /Anchors for the re-read list: .*#core-idea/);
+test("a checkpoint has no digest; the error names checkpoint.ts", () => {
+  assert.throws(() => buildDigest(WORKSPACE_FIXTURE, "C01"), /checkpoint\.ts C01/);
 });
 
 test("the scout rows carry thread counts, newest mention, excerpt and the single-author flag", () => {

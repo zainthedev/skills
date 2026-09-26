@@ -57,7 +57,7 @@ The final independent project, derived from the goal.
 _Avoid_: final project, portfolio project
 
 **Checkpoint**:
-A static block at a section boundary: retrieval prompts sampled from earlier sections, with the learner's predicted and actual score recorded beside them. How spacing happens without a scheduler.
+A static block at a section boundary: retrieval prompts sampled from earlier sections, with the learner's predicted and actual score recorded beside them. How spacing happens without a scheduler. Written by a script, not a model.
 _Avoid_: review, exam, test, milestone, quiz (that is a command)
 
 **Lesson zero**:
@@ -149,7 +149,7 @@ The command that asks retrieval prompts one at a time, grades free-text answers 
 _Avoid_: review, test, drill
 
 **Site**:
-The static HTML rendering of a workspace, built from the Markdown by the bundled converter and served locally so the done button can write back.
+The static HTML rendering of a workspace, built from the Markdown by the bundled converter and served locally so the done button can write back. The learner's main way through the course: plan starts it, next rebuilds it, and build starts it again.
 _Avoid_: web pages, website, export
 
 **Token estimate**:

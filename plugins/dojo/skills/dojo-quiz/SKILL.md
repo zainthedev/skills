@@ -28,6 +28,12 @@ Show one prompt with its lesson ID. Wait. Grade the answer against the printed a
 
 ### 4. Close
 
-Report recalled against predicted, and name the lessons with a "not recalled". Append one row to `quiz-log.md`: `| <date> | <scope> | <predicted> | <recalled> | <lessons to re-read> |`. Done when the row is written.
+Report recalled against predicted, and name the lessons with a "not recalled". Record the session in one call, with the command's argument as the scope, or `all` without one:
+
+```bash
+node <dojo root>/scripts/quiz-log.ts <workspace> --scope <scope> --predicted <n> --recalled <n> --reread <IDs with a "not recalled", comma-separated>
+```
+
+Done when it printed the row.
 
 If the learner asks you to explain a concept mid-quiz, give the source link and rung 1 of the ladder, then continue.

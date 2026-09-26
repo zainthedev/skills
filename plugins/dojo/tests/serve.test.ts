@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { join } from "node:path";
-import { isAlive, readPid, startServer } from "../skills/dojo/scripts/serve.ts";
+import { confirmServer, isAlive, readPid, startServer } from "../skills/dojo/scripts/serve.ts";
 import { SCRIPTS_DIR, removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
 function startChild(ws: string): Promise<{ child: ChildProcess; url: string }> {
@@ -131,6 +131,47 @@ test("--stop when nothing runs and stale pid files", async () => {
     assert.equal(runScript("serve.ts", ["--help"]).status, 0);
     assert.equal(runScript("serve.ts", [ws, "--port", "99999"]).status, 2);
   } finally {
+    removeDir(ws);
+  }
+});
+
+test("--detach leaves a server running after the command exits, and a second start reuses it", async () => {
+  const ws = tempWorkspace();
+  try {
+    const first = runScript("serve.ts", [ws, "--port", "0", "--detach"]);
+    assert.equal(first.status, 0, first.stderr);
+    const url = first.stdout.trim();
+    assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/$/);
+    const record = readPid(ws);
+    assert.equal(record?.url, url);
+    const status = (await (await fetch(`${url}api/status`)).json()) as { pid: number; workspace: string };
+    assert.equal(status.pid, record?.pid);
+    assert.equal((await fetch(url)).status, 200);
+    assert.equal(runScript("serve.ts", [ws, "--port", "0", "--detach"]).stdout.trim(), url);
+    const stop = runScript("serve.ts", [ws, "--stop"]);
+    assert.match(stop.stdout, /stopped dojo server/);
+    for (let i = 0; i < 50 && isAlive(record!.pid); i++) await new Promise((r) => setTimeout(r, 100));
+    assert.equal(isAlive(record!.pid), false);
+  } finally {
+    const left = readPid(ws);
+    if (left && isAlive(left.pid)) process.kill(left.pid, "SIGKILL");
+    removeDir(ws);
+  }
+});
+
+test("a live PID that is not this workspace's server is never reported or stopped", async () => {
+  const ws = tempWorkspace();
+  const other = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" });
+  try {
+    writeFileSync(join(ws, ".dojo", "serve.pid"), `${other.pid}\nhttp://127.0.0.1:9/\n`);
+    assert.equal(await confirmServer({ pid: other.pid!, url: "http://127.0.0.1:9/" }, ws), false);
+    const stop = runScript("serve.ts", [ws, "--stop"]);
+    assert.equal(stop.status, 0, stop.stderr);
+    assert.match(stop.stdout, /left alone/);
+    assert.equal(isAlive(other.pid!), true);
+    assert.equal(existsSync(join(ws, ".dojo", "serve.pid")), false);
+  } finally {
+    other.kill("SIGKILL");
     removeDir(ws);
   }
 });

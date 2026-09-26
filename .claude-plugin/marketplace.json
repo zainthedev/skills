@@ -9,7 +9,6 @@
       "name": "dojo",
       "source": "./plugins/dojo",
       "description": "Odin-Project-style learning courses for technical topics: curated free resources, projects, retrieval practice, and a coach that never gives the answer.",
-      "version": "0.1.0",
       "category": "learning",
       "keywords": ["learning", "curriculum", "odin-project", "education", "coach", "retrieval-practice"]
     }

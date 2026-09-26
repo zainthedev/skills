@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildSite } from "../skills/dojo/scripts/build-site.ts";
+import { assignmentCard, buildSite } from "../skills/dojo/scripts/build-site.ts";
 import { removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
 test("--if-exists does nothing without a site and rebuilds when one exists", () => {
@@ -74,6 +74,13 @@ test("lesson pages carry accessible reveal controls filled from the sidecar", ()
     assert.match(page, /href="\.\.\/assets\/dojo.css"/);
     assert.match(page, /<button type="button" class="done-button" data-id="L01" data-status="generated">Mark not done<\/button>/);
     assert.match(page, /<a class="pager-next" rel="next" href="\.\.\/lessons\/L02-the-event-loop.html">Next: L02 The event loop<\/a>/);
+    // Each Why, How and Do line is its own labelled row in a card, the first letter capitalised.
+    assert.equal((page.match(/class="assignment-card"/g) ?? []).length, 3);
+    assert.match(page, /<p class="assignment-title"><strong><a href="https:\/\/nodejs\.org\/en\/learn\/getting-started\/introduction-to-nodejs">Introduction to Node\.js<\/a><\/strong> <span class="assignment-host">nodejs\.org<\/span><\/p>/);
+    assert.match(page, /<div class="step step-why"><dt>Why<\/dt><dd>The official one-page answer to what Node is\.<\/dd><\/div><div class="step step-how">/);
+    assert.match(page, /<div class="step step-do"><dt>Do<\/dt><dd>Run <code>node --version<\/code> and a one-line script from the terminal\.<\/dd><\/div><\/dl>\n<ul>\n<li>Skip the assignment links/);
+    // A done item ends with its date and the way on.
+    assert.match(page, /<section class="finish controls"><p>Done on 2026-09-20\. <a href="\.\.\/lessons\/L02-the-event-loop\.html">Next: L02 The event loop<\/a><\/p><\/section>/);
   } finally {
     removeDir(ws);
   }
@@ -85,10 +92,14 @@ test("the sidebar lists the syllabus and marks the current page once", () => {
     buildSite(ws);
     const page = readFileSync(join(ws, "site", "lessons", "L02-the-event-loop.html"), "utf8");
     assert.equal((page.match(/aria-current="page"/g) ?? []).length, 1);
-    assert.match(page, /<li class="status-done is-current"><a href="\.\.\/lessons\/L02-the-event-loop.html" aria-current="page"><span class="item-id">L02<\/span> The event loop<\/a> <span class="badge badge-done">done<\/span><\/li>/);
-    assert.match(page, /<span class="sidebar-planned"><span class="item-id">P02<\/span> Build a directory watcher<\/span>/);
+    assert.match(page, /<li class="status-done is-current"><a href="\.\.\/lessons\/L02-the-event-loop.html" aria-current="page"><span class="status-dot status-dot-done" aria-hidden="true"><\/span><span class="visually-hidden">\(done\)<\/span><span class="item-id">L02<\/span> <span class="item-title">The event loop<\/span><\/a><\/li>/);
+    assert.match(page, /<span class="sidebar-planned"><span class="status-dot status-dot-planned" aria-hidden="true"><\/span><span class="visually-hidden">\(planned\)<\/span><span class="item-id">P02<\/span> <span class="item-title">Build a directory watcher<\/span><\/span>/);
     assert.match(page, /<nav class="sidebar" aria-label="Syllabus">/);
     assert.match(page, /<p class="sidebar-progress">3 of 5 done<\/p>/);
+    assert.match(page, /role="progressbar" aria-label="Course progress" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3"><span style="width: 60%">/);
+    // The page's own section is open, with its count.
+    assert.match(page, /<details class="sidebar-section" open><summary><span class="sidebar-section-title">Section 1: Node fundamentals<\/span> <span class="sidebar-section-count" aria-label="3 of 5 done">3\/5<\/span><\/summary>/);
+    assert.equal(page.includes("badge-planned"), false);
   } finally {
     removeDir(ws);
   }
@@ -166,6 +177,28 @@ test("the site script ships as plain JavaScript stripped from the TypeScript sou
     assert.match(js, /\/api\/done/);
     // It parses as JavaScript.
     new Function(js);
+  } finally {
+    removeDir(ws);
+  }
+});
+
+test("assignmentCard leaves items without Why, How and Do lines alone", () => {
+  assert.equal(assignmentCard("Given a directory, the tool prints one line per file."), null);
+  assert.equal(assignmentCard('<strong><a href="https://x.example/a">A</a></strong><br>\nWhat: not a step'), null);
+  const wrapped = assignmentCard('<strong><a href="https://www.x.example/a">A</a></strong><br>\nWhy: one<br>\ntwo<br>\nDo: three');
+  assert.match(wrapped ?? "", /<span class="assignment-host">x\.example<\/span>/);
+  assert.match(wrapped ?? "", /<dt>Why<\/dt><dd>One two<\/dd>/);
+});
+
+test("an unfinished item ends with a done button that opens the next item, and the index shows where to continue", () => {
+  const ws = tempWorkspace();
+  try {
+    buildSite(ws);
+    const checkpoint = readFileSync(join(ws, "site", "checkpoints", "C01-section-1.html"), "utf8");
+    assert.match(checkpoint, /<section class="finish controls"><p class="finish-prompt">Finished with this checkpoint\?<\/p><span class="done-control"><button type="button" class="done-button" data-id="C01" data-status="done">Mark done<\/button>/);
+    const index = readFileSync(join(ws, "site", "index.html"), "utf8");
+    assert.match(index, /<section class="continue continue-next"><p class="continue-label">Next up<\/p><p class="continue-title">Build a directory watcher<\/p>/);
+    assert.match(index, /Run <code>\/dojo-next<\/code> in your agent to generate it\./);
   } finally {
     removeDir(ws);
   }

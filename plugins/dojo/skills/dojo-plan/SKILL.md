@@ -63,7 +63,17 @@ node <dojo root>/scripts/fetch-log.ts --collect <dir> && node <dojo root>/script
 
 Send errors back to the pass, or fix small ones yourself. Done when lint is clean and the syllabus's total hours fit the learner's weeks with a fifth to spare.
 
-### 5. Report
+### 5. Build and serve the site
+
+The site is where the learner works through the course, so start it now rather than waiting for `/dojo-build`. This builds `<dir>/site/` and starts the local server in its own process group, so it keeps running after this session closes; it prints the URL:
+
+```bash
+node <dojo root>/scripts/serve.ts <dir> --detach
+```
+
+If it fails, say so, give the path of `<dir>/site/index.html`, which opens as plain files without the done button, and name `/dojo-build` as the way to start the server later. Done when the URL, or that fallback, is on screen.
+
+### 6. Report
 
 Show the outline (sections, items per section, total hours), the structure sources it followed, the top five ledger resources with scores, and the tokens this run used:
 
@@ -71,4 +81,4 @@ Show the outline (sections, items per section, total hours), the structure sourc
 node <dojo root>/scripts/measure.ts --since <start time>
 ```
 
-If it reports the transcript unavailable, say so and name the harness's own usage display instead. State `Lint: clean` on its own line once lint passed. Close with the learner's next step: read `00-how-this-works.md`, then run `/dojo-next`. Done when they have it.
+If it reports the transcript unavailable, say so and name the harness's own usage display instead. State `Lint: clean` on its own line once lint passed. Close with the learner's next step: open the site's URL and start with "How this course works", then close this session, which leaves the site running; mark items done on the site, and run `/dojo-next` in a new session for each next item. After a restart of the computer, `/dojo-build` starts the site again. Done when they have it.

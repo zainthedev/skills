@@ -27,12 +27,15 @@ test("read-only tools pass and every other tool is denied, MCP tools included", 
     const decision = decide({ tool_name: tool, tool_input: { file_path: "/tmp/app.js", command: "x" } });
     assert.equal(decision.allow, false, tool);
   }
-  assert.deepEqual(decide({ tool_name: "Write", tool_input: { file_path: "/ws/quiz-log.md" } }), { allow: true });
+  // The quiz log is written by quiz-log.ts, so no file tool gets an exception.
+  assert.equal(decide({ tool_name: "Write", tool_input: { file_path: "/ws/quiz-log.md" } }).allow, false);
   assert.equal(decide({}).allow, false);
 });
 
-test("a shell command is allowed only as one plain call to a read-only dojo script", () => {
+test("a shell command is allowed only as one plain call to one of the coach's dojo scripts", () => {
   assert.deepEqual(decideBash(`node ${LINT} /ws L01`, "/"), { allow: true });
+  assert.deepEqual(decideBash(`node ${join(SCRIPTS_DIR, "context.ts")} /ws quiz 2`, "/"), { allow: true });
+  assert.deepEqual(decideBash(`node ${join(SCRIPTS_DIR, "quiz-log.ts")} /ws --scope "section 2" --predicted 6 --recalled 4 --reread L03,L04`, "/"), { allow: true });
   assert.deepEqual(decideBash(`bun "${LINT}" /ws`, "/"), { allow: true });
   assert.deepEqual(decideBash("node lint.ts /ws", SCRIPTS_DIR), { allow: true });
   const bypass = decideBash(`node ${LINT} /ws ; echo hi > src/app.js`, "/");
@@ -44,6 +47,7 @@ test("a shell command is allowed only as one plain call to a read-only dojo scri
     `node ${LINT} $(id)`,
     `node ${LINT} > /tmp/x`,
     `node ${join(SCRIPTS_DIR, "mark-done.ts")} /ws L01`,
+    `node ${join(SCRIPTS_DIR, "checkpoint.ts")} /ws C01`,
     `node ${join(SCRIPTS_DIR, "does-not-exist.ts")}`,
     `node --eval "process.exit()"`,
     `python3 ${LINT}`,
@@ -54,7 +58,7 @@ test("a shell command is allowed only as one plain call to a read-only dojo scri
   }
 });
 
-test("a read-only script name outside the dojo scripts directory is denied", () => {
+test("a coach script name outside the dojo scripts directory is denied", () => {
   const dir = tempDir();
   try {
     mkdirSync(join(dir, "elsewhere"), { recursive: true });
