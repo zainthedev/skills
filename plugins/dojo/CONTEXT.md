@@ -153,7 +153,7 @@ The static HTML rendering of a workspace, built from the Markdown by the bundled
 _Avoid_: web pages, website, export
 
 **Token estimate**:
-The pre-flight number shown before generation, read from the benchmark table for the chosen depth and level.
+The pre-flight number shown before generation, read from the token table for the chosen depth and level.
 
 **Digest**:
 The computed block a research pass works from, printed by the context script for one item: profile, section plan, previous items' overviews and prompts, ledger, and the scout's top resources. Replaces reading the workspace files.

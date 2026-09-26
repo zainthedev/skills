@@ -29,6 +29,8 @@ Add `--skill <name>` to skip the picker, or `--list` to see what is here.
 
 A skill is one folder with a `SKILL.md`, in the Agent Skills format every listed agent reads. A plugin is the folder that groups related skills for a single Claude Code install. Skills that share scripts name one of their number as the root, so take that one along when you pick.
 
+Each plugin's README opens with a Quick start.
+
 ## Maintaining
 
 `scripts/link-skills.sh` symlinks every skill in the repo into `~/.claude/skills` and `~/.agents/skills`, so a `git pull` updates them. It is for working on the skills, not an installer.

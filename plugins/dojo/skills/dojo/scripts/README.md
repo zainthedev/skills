@@ -10,5 +10,5 @@ TypeScript, no build step, no dependencies: run with `node <script>.ts ...` (Nod
 - `build-site.ts`: renders the workspace to a static site with a syllabus sidebar, reveal controls and done buttons, using `site/`.
 - `serve.ts`: serves the site on 127.0.0.1 and turns the done button's request into a mark-done plus rebuild.
 - `scout.ts`: gathers community endorsement for a topic from public feeds and APIs into `.dojo/scout.json`.
+- `wait-for.ts`: blocks until a file exists and has stopped growing, so `dojo-plan` can wait for the scout with one call.
 - `measure.ts`: sums the session's token usage from the Claude Code transcript since a timestamp; on other harnesses it says the transcript is unavailable.
-- `benchmark.ts`: maintainer tool that regenerates `../TOKENS.md` from headless `claude -p` runs.

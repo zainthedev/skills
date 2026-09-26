@@ -2,7 +2,7 @@
 // Sums this session's Claude Code token usage from the transcript since a
 // timestamp, so a run's actual cost can be reported beside the estimate.
 
-import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -68,11 +68,33 @@ export function usageTotal(u: Usage): number {
 // Claude Code names the project directory after the working directory with
 // every "/" turned into "-". Newer versions replace every non-alphanumeric
 // character; both candidates are returned, the documented one first.
+// Claude Code names the transcript folder after the resolved working
+// directory, so a symlinked path (macOS /var is /private/var) is tried in
+// both spellings.
 export function projectDirNames(cwd: string): string[] {
   const absolute = resolve(cwd);
-  const slashes = absolute.replace(/\//g, "-");
-  const all = absolute.replace(/[^A-Za-z0-9]/g, "-");
-  return slashes === all ? [slashes] : [slashes, all];
+  const candidates = [absolute];
+  // The directory may be gone by the time usage is summed, so resolve the
+  // nearest ancestor that still exists and keep the rest of the path.
+  let existing = absolute;
+  const rest: string[] = [];
+  while (!existsSync(existing) && existing !== resolve(existing, "..")) {
+    rest.unshift(basename(existing));
+    existing = resolve(existing, "..");
+  }
+  try {
+    const real = join(realpathSync(existing), ...rest);
+    if (!candidates.includes(real)) candidates.push(real);
+  } catch {
+    // Unresolvable; the unresolved spelling is still tried.
+  }
+  const names: string[] = [];
+  for (const absolute of candidates) {
+    for (const name of [absolute.replace(/\//g, "-"), absolute.replace(/[^A-Za-z0-9]/g, "-")]) {
+      if (!names.includes(name)) names.push(name);
+    }
+  }
+  return names;
 }
 
 interface TranscriptRecord {

@@ -17,7 +17,7 @@ status: accepted
 | Retention | Principles only; no review scheduling (an open request) | Retrieval prompts, checkpoints with calibration, on-demand quiz |
 | Quizzes | Multiple choice; the correct answer reported always in slot A | Open-ended free recall with sidecar answers |
 | Workspace location | Current directory; a known bug writes into the skill folder | Explicit directory with a marker file |
-| Token cost | Unmeasured | Estimated up front from a benchmark table, actual reported after |
+| Token cost | Unmeasured | Estimated up front from a measured token table, actual reported after |
 | Topics | Any, including non-technical | Technical topics in v1 |
 
 Reach for `teach` when you want an agent to teach you interactively, one session at a time. Reach for dojo when you want a course you work through yourself, with the agent kept at arm's length.

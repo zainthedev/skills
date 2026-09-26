@@ -42,7 +42,14 @@ If `<dir>/profile.md` exists, stop: ask whether to extend the existing course or
 node <dojo root>/scripts/init-workspace.ts --dir <dir> --topic "<topic>" --slug <slug> --level <level> --depth <depth> --hours <n> --target <YYYY-MM-DD> --goal "<goal>" --experience "<experience>" --notes "<fork answer>"
 ```
 
-Wait for the scout to finish; it takes a few minutes and the syllabus pass needs its signal. Move its output to `<dir>/.dojo/scout.json`. Done when `profile.md`, `00-how-this-works.md` and `.dojo/scout.json` exist.
+The syllabus pass needs the scout's signal, and the scout takes a few minutes, so block on its output file rather than ending your turn:
+
+```bash
+node <dojo root>/scripts/wait-for.ts "${TMPDIR:-/tmp}/dojo-scout-<slug>.json" --timeout 900
+mv "${TMPDIR:-/tmp}/dojo-scout-<slug>.json" <dir>/.dojo/scout.json
+```
+
+If it times out, tell the learner and continue with thin evidence: the ledger's `thin_evidence` flag records it. Done when `profile.md`, `00-how-this-works.md` and `.dojo/scout.json` exist.
 
 ### 4. Syllabus pass
 

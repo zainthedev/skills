@@ -36,7 +36,7 @@ State the token estimate for this item type at the profile's depth and level, fr
 ### 4. Generate
 
 - **Lesson** or **project**: run one research pass with the brief from RESEARCH.md. Give it to a subagent where your harness can spawn one, on the model `research_model` in `profile.md` names when the harness allows a choice; otherwise do it yourself in this session under the same budget. A project uses the quick budget whatever the profile says. A completion project also writes its `starter/`.
-- **Checkpoint**: no research. Run `node <dojo root>/scripts/context.ts <workspace> <ID>`, which prints the sampled lessons' prompts with their answers and link targets, and write the checkpoint yourself per CHECKPOINT-FORMAT.md and STYLE.md.
+- **Checkpoint**: no research and no subagent. Run `node <dojo root>/scripts/context.ts <workspace> <ID>`, which prints the sampled lessons' prompts with their answers and link targets, and write the checkpoint yourself in this session per CHECKPOINT-FORMAT.md and STYLE.md.
 
 Done when the files exist and the pass's report lists files, budget used and a clean lint.
 

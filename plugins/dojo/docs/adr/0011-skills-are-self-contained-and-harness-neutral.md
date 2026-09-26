@@ -17,4 +17,4 @@ Every dojo skill is a folder in the Agent Skills format that any supporting harn
 - Claude Code users type `/dojo-plan`, or the namespaced `/dojo:dojo-plan`; Codex users type `$dojo-plan`.
 - Tests moved out of the skill to `plugins/dojo/tests/` so an install carries runtime code only.
 - The coach guard command searches the plugin root, the project's `.claude/skills` and the home `.claude/skills` for its script, and denies the tool when it finds none, so a broken install fails closed.
-- `docs/tokens.md` became `skills/dojo/TOKENS.md`; the benchmark writes there.
+- `docs/tokens.md` became `skills/dojo/TOKENS.md`, so the commands can quote it from the dojo root.

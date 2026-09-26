@@ -4,6 +4,19 @@ Odin-Project-style learning courses for technical topics, generated into a direc
 
 `dojo` interviews you once, researches how the topic is taught and which free resources people actually recommend, and writes a syllabus of sections, projects and checkpoints. Each lesson orients you in a few hundred cited words, then sends you to the best free resources for the real material. Projects have requirements and no walkthrough. Checkpoints ask you questions from memory. The only AI help while you learn is a coach that asks questions and points at resources, and will not write your code.
 
+## Quick start
+
+1. Install the skills for your agent (below). You need Node 24 or newer, or Bun, on your PATH.
+2. Make a directory for the course, not inside a work repo, and open your agent there:
+
+   ```bash
+   mkdir ~/learn-rust && cd ~/learn-rust && claude
+   ```
+
+3. Run `/dojo-plan Rust` (`$dojo-plan Rust` on Codex). It asks one round of questions: your goal, what you have built before, hours per week and a target date, and how deep the research should go, with a token estimate beside each depth. It then researches for a few minutes and writes `syllabus.md`.
+4. Close the session and read `00-how-this-works.md`. It is the course's rules, including what the AI will and will not do from here on.
+5. `/dojo-next` generates the first lesson. Close the session and go learn. Come back with `/dojo-next` when it is done, `/dojo-coach` when you are stuck, `/dojo-quiz` to test recall, and `/dojo-build` for a browsable site with a done button.
+
 ## Install
 
 The skills follow the Agent Skills format, so they run on any agent that supports it. Two ways in; pick one, because installing both leaves you with every skill twice.
@@ -27,9 +40,15 @@ The installer lets you choose skills and target agents. Take the six `dojo` skil
 npx skills@latest add zainthedev/skills --skill dojo --skill dojo-plan
 ```
 
-For local development from a checkout on Claude Code, `claude --plugin-dir ./plugins/dojo`. On any agent, the repo's `scripts/link-skills.sh` symlinks every skill into the agent's skill directories.
-
 Requirements: an agent with web fetch and web search, and Node 24 or newer (or Bun) for the bundled scripts. The scripts have no dependencies and no build step.
+
+### Desktop apps
+
+- **Claude Code Desktop** shares its settings and installed plugins with the CLI, so the two marketplace commands above, run once in a terminal, make `/dojo-plan` available in the Code tab. Open the course directory as the session's folder.
+- **The Codex app** reads the skills directory skills.sh fills (`~/.agents/skills` with `-g`, or the project's `.agents/skills`) and shows each skill in its picker with the name from `agents/openai.yaml`. Its sandbox blocks network access for shell commands by default; the scout and the fetch steps need it, so allow network for the session or the plan step reports thin evidence. Codex has no hooks, so the coach's read-only rule is held by instruction there.
+- **Cursor, VS Code with Copilot, and the rest of the skills.sh list** read the project-level directory skills.sh writes to. None of them run Claude Code hooks, so the same coach note applies.
+
+Contributors working on the skills themselves use `scripts/link-skills.sh` at the repo root, which symlinks every skill into the same directories so a `git pull` updates them.
 
 ## Commands
 
@@ -65,9 +84,9 @@ Keep the workspace out of the repository you work in. A directory of its own, or
 
 ## Tokens
 
-Generation costs tokens; learning does not. `dojo-plan` shows an estimate for each depth before you choose, `dojo-next` shows one before it generates, and both report the actual usage of the run afterwards on Claude Code, whose transcript the measure script reads; other agents show their own usage. The estimates live in [skills/dojo/TOKENS.md](skills/dojo/TOKENS.md), which a maintainer regenerates from headless runs with the benchmark script. Format is free: the site is rendered from the Markdown by a script, not written by the model.
+Generation costs tokens; learning does not. `dojo-plan` shows an estimate for each depth before you choose, `dojo-next` shows one before it generates, and both report the actual usage of the run afterwards on Claude Code, whose transcript the measure script reads; other agents show their own usage. The estimates live in [skills/dojo/TOKENS.md](skills/dojo/TOKENS.md), with the measured runs they come from. Format is free: the site is rendered from the Markdown by a script, not written by the model.
 
-Most of a lesson's cost is the research pass re-reading its own context, so the pass works from a computed digest of the workspace rather than the files, fetches extracts rather than page summaries, and can run on a cheaper model by setting `research_model` in `profile.md` where the agent allows a subagent to use one ([ADR 0013](docs/adr/0013-research-passes-read-a-digest-fetch-extracts-and-may-run-on-a-cheaper-model.md)). None of this cuts what a lesson contains: every citation is still fetched before it is used.
+Measured on Opus 5.5, a lesson costs about 210k to 270k weighted tokens whatever its depth, a syllabus 420k to 680k, a project with a starter 360k and a checkpoint 170k, so a six-section course at standard depth is roughly 8M weighted tokens spread over the weeks you take. Most of a lesson's cost is the research pass re-reading its own context, so the pass works from a computed digest of the workspace rather than the files, fetches extracts rather than page summaries, and can run on a cheaper model by setting `research_model` in `profile.md` where the agent allows a subagent to use one ([ADR 0013](docs/adr/0013-research-passes-read-a-digest-fetch-extracts-and-may-run-on-a-cheaper-model.md)). None of this cuts what a lesson contains: every citation is still fetched before it is used.
 
 ## Writing
 

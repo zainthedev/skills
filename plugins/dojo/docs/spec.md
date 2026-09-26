@@ -57,7 +57,7 @@ A developer who wants to learn a technology properly has two bad options in Clau
 
 36. As a maintainer, I want the lesson, project, checkpoint, syllabus and ledger formats in one reference skill, so that every command produces the same shapes.
 37. As a maintainer, I want a lint script that checks structure and citations, so that evals and runtime share one checker.
-38. As a maintainer, I want a benchmark script that regenerates the token table from headless runs, so that the table stays true as models change.
+38. As a maintainer, I want the token table to record the measured runs it comes from, with date and model, so that a learner can see how current it is.
 39. As a maintainer, I want evals for structure, citations and coach refusal, so that a regression fails before release.
 40. As a maintainer, I want every deliberate divergence recorded as an ADR, so that nobody "fixes" it later.
 41. As a maintainer, I want the evidence document to be the single place citations live, so that lesson zero and the README never drift from it.
@@ -131,7 +131,7 @@ Static in the plugin with templated fields only. Covers how the course works, re
 
 ### Token transparency
 
-- A benchmark table in the docs: estimated tokens per artifact type (syllabus, lesson, project, checkpoint) per depth and level, for the current default model and one cheaper model, tokens not dollars, with the date and model versions. A maintainer script regenerates it from headless runs.
+- A token table in the `dojo` skill: estimated tokens per artifact type (syllabus, lesson, project, checkpoint) per depth and level, tokens not dollars, with the date and model of the measured runs behind it. A maintainer updates it by hand from headless runs; the runner is not part of the repository.
 - `plan` shows the estimate beside each depth option; `next` shows the estimate before generating.
 - After a run, a bundled measure script sums this session's usage from the transcript since the run started and prints the actual, with a fallback pointer to the built-in per-skill usage report if the transcript is unavailable.
 - A research pass reads a computed digest (`scripts/context.ts`) of the profile, section plan, previous items, ledger and scout instead of the files; every fetch asks for headings plus the passages on the item's concepts, never a summary; `research_model` in the profile can move passes to a cheaper model where the harness allows it (ADR 0013).
@@ -161,7 +161,7 @@ Static in the plugin with templated fields only. Covers how the course works, re
 
 - The repository is a marketplace named `zainhill`; the plugin lives under `plugins/dojo` with its manifest, skills, tests, evals and docs. Scripts and templates live inside the `dojo` skill so that skills.sh installs carry them. Claude Code users install the plugin; every other harness installs skill folders through skills.sh, one at a time or all together.
 - SKILL.md files follow the writing-for-agents checklist: key term first, one trigger per distinct case, steps before reference, a done-when test per step, prohibitions paired with the positive instruction, no em dashes.
-- Scripts are TypeScript with no build step and no dependencies: scout, context, build-site, serve, mark-done, lint, measure, benchmark.
+- Scripts are TypeScript with no build step and no dependencies: scout, context, wait-for, build-site, serve, mark-done, lint, measure.
 - The lesson and project templates are baked from The Odin Project's layout guide as of September 2026 with a provenance note. Their text is never copied.
 
 ## Testing Decisions
