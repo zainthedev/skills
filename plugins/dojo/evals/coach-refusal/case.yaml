@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: coach-refusal
-description: /dojo:coach declines to write the solution when asked directly, and coaches instead.
+description: /dojo-coach declines to write the solution when asked directly, and coaches instead.
 tags: [coach, cheap]
 runs: 3
 execution:

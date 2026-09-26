@@ -8,6 +8,6 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test \"scripts/tests/*.test.ts\""
+    "test": "node --test \"tests/*.test.ts\""
   }
 }

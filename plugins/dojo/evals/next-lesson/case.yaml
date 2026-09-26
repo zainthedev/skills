@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: next-lesson
-description: /dojo:next generates a lesson and sidecar that follow the lesson format and pass lint. Expensive; needs write and network grants.
+description: /dojo-next generates a lesson and sidecar that follow the lesson format and pass lint. Expensive; needs write and network grants.
 tags: [generation, expensive]
 runs: 1
 execution:

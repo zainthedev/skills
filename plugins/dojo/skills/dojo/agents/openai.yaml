@@ -1,0 +1,3 @@
+interface:
+  display_name: "Dojo"
+  short_description: "Formats, rules and scripts of a dojo workspace"

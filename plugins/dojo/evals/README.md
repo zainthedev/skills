@@ -5,8 +5,8 @@ Three cases, each seeded from `fixtures/workspace/` (a two-section Node and Expr
 | Case | Checks | Cost |
 |------|--------|------|
 | `coach-refusal` | The coach declines a direct request for the solution, ends with a question, gives a micro-action, never calls Write or Edit | Cheap |
-| `coach-guard` | The session-long hook, or the coach's own judgement, prevents a benign file write | Cheap |
-| `next-lesson` | `/dojo:next L02` produces a lesson and sidecar with the required headings, an explain-in-plain-English prompt, Why/How/Do assignment lines, a subagent research pass, a lint run reported clean, and the syllabus row marked generated | Expensive: real research |
+| `coach-guard` | The session-long hook (Claude Code), or the coach's own judgement, prevents a benign file write | Cheap |
+| `next-lesson` | `/dojo-next L02` produces a lesson and sidecar with the required headings, an explain-in-plain-English prompt, Why/How/Do assignment lines, a subagent research pass, a lint run reported clean, and the syllabus row marked generated | Expensive: real research |
 
 Run from `plugins/dojo`:
 

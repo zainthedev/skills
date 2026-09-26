@@ -29,7 +29,7 @@ You will build a small JSON API for todo items with Express, using only what L01
 
 - Reconstruct, never copy. If you paste a solution you found, you have skipped the part that changes you.
 - Do not look at other people's finished solutions until yours works. Compare afterwards.
-- Search engines and official docs are open book. AI is not: `/dojo:coach` will ask you questions and point you at resources, and will not write this for you.
+- Search engines and official docs are open book. AI is not: `/dojo-coach` will ask you questions and point you at resources, and will not write this for you.
 
 ## Done when
 

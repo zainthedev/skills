@@ -129,8 +129,12 @@ _Avoid_: mode, tier, thoroughness, effort (a Claude setting)
 ### Commands and help
 
 **Coach**:
-The only help mode. Guides with questions and hints up a ladder, never gives a solution, cannot write files.
+The only help mode. Guides with questions and hints up a ladder, never gives a solution, writes no files: a tool guard enforces that on Claude Code, the coach itself elsewhere.
 _Avoid_: tutor, assistant, sensei, mentor
+
+**Harness**:
+The agent that runs the skills: Claude Code, Codex, Cursor, Copilot or any other host of the Agent Skills format. Skill text names a harness only where behaviour differs.
+_Avoid_: agent (ambiguous with subagent), IDE, tool
 
 **Ladder**:
 The coach's four rungs, one per message: what have you tried; a narrowing question; the exact resource section; the concept with a different example.
@@ -166,5 +170,5 @@ The pre-flight number shown before generation, read from the benchmark table for
 - "curriculum" meant both the plan and everything generated. Resolved: the plan is the **Syllabus**; the whole is the **Workspace**; "curriculum" is not a domain term.
 - "review" meant a scheduled command, a section-boundary block and re-reading. Resolved: the block is a **Checkpoint**, the command is **Quiz**, and "review" is not used.
 - "knowledge check" is The Odin Project's retired name for what dojo calls a **Retrieval prompt**. The two are not identical; see ADR 0003.
-- "user" meant the learner and whoever runs Claude Code. Resolved: **Learner** for the person learning; "user" only for the Claude Code user in skill text.
+- "user" meant the learner and whoever runs the harness. Resolved: **Learner** for the person learning; "user" only for the harness user in skill text.
 - "resources" meant a file and a category. Resolved: the file is the **Ledger**; a **Resource** is one entry.

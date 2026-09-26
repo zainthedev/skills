@@ -66,10 +66,10 @@ A developer who wants to learn a technology properly has two bad options in Clau
 
 ### Commands
 
-- Five user-invoked skills, `plan`, `next`, `quiz`, `coach` and `build`, invoked as `/dojo:<name>`. Each sets `disable-model-invocation: true`, a human-facing description and an argument hint, following Matt Pocock's conventions.
-- One model-invoked reference skill, `dojo-conventions`, holds the formats and rules the five share: lesson, project, checkpoint, lesson zero, syllabus, ledger, rubric, AI rules, structure sources. The five call it through the Skill tool. No skill links into another skill's folder.
+- Five user-invoked skills, `dojo-plan`, `dojo-next`, `dojo-quiz`, `dojo-coach` and `dojo-build`, invoked as `/dojo-<verb>` on Claude Code (or namespaced, `/dojo:dojo-<verb>`) and `$dojo-<verb>` on Codex. Each sets `disable-model-invocation: true`, a human-facing description and an argument hint, following Matt Pocock's conventions. The prefix exists because outside a plugin there is no namespace.
+- One model-invoked skill, `dojo`, is the root the five share: the formats and rules (lesson, project, checkpoint, lesson zero, syllabus, ledger, rubric, AI rules, structure sources), the token table, `scripts/` and `templates/`. The five call it through the Skill tool, and it names its own directory so the commands can run the scripts by absolute path on any harness. No skill links into another skill's folder, and nothing a skill needs lives outside a skill folder (ADR 0011).
 - Each skill ships the Codex metadata file beside its SKILL.md, as his plugin does.
-- `coach` registers a PreToolUse hook in its frontmatter that persists for the rest of the session, denying Edit, Write, MultiEdit and NotebookEdit (except appends to the quiz log) and any Bash command other than dojo's read-only scripts. Claude Code's `allowed-tools` only pre-approves permissions and `disallowed-tools` lasts one turn, so the hook is the enforcement. A coach session is therefore read-only, and `next` and `build` need a fresh session. No other skill declares hooks.
+- `dojo-coach` registers a PreToolUse hook in its frontmatter that persists for the rest of the session, denying Edit, Write, MultiEdit and NotebookEdit (except appends to the quiz log) and any Bash command other than dojo's read-only scripts. Claude Code's `allowed-tools` only pre-approves permissions and `disallowed-tools` lasts one turn, so the hook is the enforcement there. The hook command looks for the guard script in the plugin root, the project's `.claude/skills` and the home `.claude/skills`, and denies the tool if none is found. On other harnesses the coach holds the rule by instruction. A coach session is therefore read-only, and `dojo-next` and `dojo-build` need a fresh session. No other skill declares hooks.
 
 ### Intake (`plan`)
 
@@ -154,7 +154,7 @@ Static in the plugin with templated fields only. Covers how the course works, re
 
 ### Plugin structure and conventions
 
-- The repository is a marketplace named `zainhill`; the plugin lives under `plugins/dojo` with its manifest, skills, templates, scripts, evals and docs.
+- The repository is a marketplace named `zainhill`; the plugin lives under `plugins/dojo` with its manifest, skills, tests, evals and docs. Scripts and templates live inside the `dojo` skill so that skills.sh installs carry them. Claude Code users install the plugin; every other harness installs skill folders through skills.sh, one at a time or all together.
 - SKILL.md files follow the writing-for-agents checklist: key term first, one trigger per distinct case, steps before reference, a done-when test per step, prohibitions paired with the positive instruction, no em dashes.
 - Scripts are TypeScript with no build step and no dependencies: scout, build-site, serve, mark-done, lint, measure, benchmark.
 - The lesson and project templates are baked from The Odin Project's layout guide as of September 2026 with a provenance note. Their text is never copied.

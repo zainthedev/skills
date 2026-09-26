@@ -4,7 +4,7 @@ title: How this course works
 ---
 # How this course works
 
-This is a **dojo** course on Node and Express, built for one goal: build a small REST API for my team. It runs at about 6 hours a week to 2026-12-15, at intermediate level. It follows The Odin Project's model, and it is different from what you may expect from an AI-made course, so read this page first.
+This is a **dojo** course on {{topic}}, built for one goal: {{goal}}. It runs at about {{hours_per_week}} hours a week to {{target_date}}, at {{level}} level. It follows The Odin Project's model, and it is different from what you may expect from an AI-made course, so read this page first.
 
 ## What you are holding
 
@@ -50,6 +50,6 @@ Generating an item costs tokens; the command shows an estimate first. Learning f
 
 ## Why it is built this way
 
-Each choice above rests on published evidence: retrieval practice, spacing through checkpoints, prediction questions, worked examples for beginners that fade as you advance, and hint-only AI help. The citations are collected in dojo's evidence document: https://github.com/zainthedev/skills/blob/main/plugins/dojo/docs/evidence.md
+Each choice above rests on published evidence: retrieval practice, spacing through checkpoints, prediction questions, worked examples for beginners that fade as you advance, and hint-only AI help. The citations are collected in dojo's evidence document: {{evidence_url}}
 
-dojo 0.1.0. Generated on 2026-09-25.
+dojo {{dojo_version}}. Generated on {{created}}.

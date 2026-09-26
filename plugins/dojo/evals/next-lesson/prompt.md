@@ -1,1 +1,1 @@
-/dojo:next L02
+/dojo-next L02
