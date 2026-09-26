@@ -160,7 +160,7 @@ test("command line output format, JSON and exit codes", () => {
   withInvalid("C01-not-verbatim.md", "checkpoints/C01-section-1.md", (ws) => {
     const failed = runScript("lint.ts", [ws]);
     assert.equal(failed.status, 1);
-    assert.match(failed.stdout, /^error checkpoints\/C01-section-1\.md:20 checkpoint\/verbatim: prompt 5 is not verbatim/m);
+    assert.match(failed.stdout, /^checkpoints\/C01-section-1\.md\n  error checkpoint\/verbatim\n    20: prompt 5 is not verbatim/m);
     const json = runScript("lint.ts", [ws, "C01", "--json"]);
     assert.equal(json.status, 1);
     const parsed = JSON.parse(json.stdout);
@@ -171,4 +171,23 @@ test("command line output format, JSON and exit codes", () => {
   assert.equal(unknown.status, 1);
   assert.match(unknown.stdout, /item\/unknown/);
   assert.equal(runScript("lint.ts", ["--help"]).status, 0);
+});
+
+test("a file that cannot be parsed is one finding that names it, and unsafe link targets are errors", () => {
+  const ws = tempWorkspace();
+  try {
+    const lesson = join(ws, "lessons", "L01-what-node-is.md");
+    const text = readFileSync(lesson, "utf8");
+    writeFileSync(lesson, text.replace("---\nid: L01", "---\nbroken line without a colon\nid: L01"));
+    const result = runScript("lint.ts", [ws]);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /^lessons\/L01-what-node-is\.md\n  error item\/parse\n    1: cannot parse L01-what-node-is\.md: frontmatter line/m);
+    // The other files were still checked.
+    assert.match(result.stdout, /L02-the-event-loop|C01-section-1|error\(s\)/);
+    writeFileSync(lesson, text.replace("## Lesson overview", "See [this](javascript:alert(1)) first.\n\n## Lesson overview"));
+    const unsafe = runScript("lint.ts", [ws, "L01"]);
+    assert.match(unsafe.stdout, /  error link\/scheme\n    \d+: link target "javascript:alert\(1"/);
+  } finally {
+    removeDir(ws);
+  }
 });

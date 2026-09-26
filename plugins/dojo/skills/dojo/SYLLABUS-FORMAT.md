@@ -11,7 +11,6 @@ File: `syllabus.md` at the workspace root.
 topic: Node and Express
 slug: node-express
 level: intermediate
-depth: standard
 generated: 2026-09-25
 dojo: 0.1.0
 structure_sources:

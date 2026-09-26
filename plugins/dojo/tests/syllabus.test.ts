@@ -22,7 +22,7 @@ test("parses frontmatter, sections and items with line numbers", () => {
       ["C01", "checkpoint", 0.5, "generated", "", 1],
     ],
   );
-  assert.equal(syllabus.items[0].line, 22);
+  assert.equal(syllabus.items[0].line, 21);
   assert.deepEqual(syllabus.tables[0].header, ["ID", "Type", "Title", "Hours", "Status", "Done"]);
 });
 
@@ -45,8 +45,8 @@ test("setStatus rewrites one row and leaves every other byte unchanged", () => {
   const after = result.text.split("\n");
   assert.equal(after.length, before.length);
   const changed = after.map((line, i) => (line === before[i] ? null : i)).filter((i) => i !== null);
-  assert.deepEqual(changed, [24]);
-  assert.equal(after[24], "| P02 | capstone | Build a directory watcher | 10 | done | 2026-09-25 |");
+  assert.deepEqual(changed, [23]);
+  assert.equal(after[23], "| P02 | capstone | Build a directory watcher | 10 | done | 2026-09-25 |");
   assert.equal(result.item.status, "done");
   assert.equal(result.item.done, "2026-09-25");
 });

@@ -20,6 +20,8 @@ export interface SeAnswer {
   questionId: number;
   score: number;
   accepted: boolean;
+  /** The answerer's display name or id, for the self-promotion check. */
+  owner: string | null;
   date: string | null;
   text: string;
   links: ExtractedLink[];
@@ -76,6 +78,11 @@ export function parseSeAnswers(json: unknown): SeEnvelope<SeAnswer> {
       questionId: row.question_id,
       score: num(row.score),
       accepted: row.is_accepted === true,
+      owner: (() => {
+        const owner = row.owner && typeof row.owner === 'object' ? (row.owner as Record<string, unknown>) : null;
+        const name = owner?.display_name ?? owner?.user_id;
+        return name === undefined || name === null ? null : String(name);
+      })(),
       date: toDay(typeof row.creation_date === 'number' ? row.creation_date : null),
       text: htmlToText(body),
       links: extractLinksFromHtml(body),

@@ -36,6 +36,8 @@ export interface Mention {
   rank: number | null;
   /** One line of text around the link. */
   excerpt: string;
+  /** The commenter or answerer, when the source names one. */
+  author: string | null;
 }
 
 export interface Freshness {
@@ -63,6 +65,14 @@ export interface Resource {
   hn_mentions_24m: number;
   objective_score: number;
   max_objective: number;
+  /** Distinct threads or pages the mentions come from. */
+  threads: number;
+  /** YYYY-MM-DD of the newest dated mention, or null. */
+  newest_mention: string | null;
+  /** One line from the best-ranked reply that names it, for the model to read before counting. */
+  excerpt: string;
+  /** True when every reply that names it comes from one author: the rubric's self-promotion penalty. */
+  author_only: boolean;
   stars?: number;
   views?: number;
 }
@@ -98,10 +108,16 @@ export interface ScoutOutput {
   subreddits: string[];
   keywords: string[];
   budget: Budget;
+  /** Request counts by outcome; the full log is kept only for requests that failed or were skipped. */
+  requests: { ok: number; error: number; skipped: number };
   sources: SourceRecord[];
   threads: Thread[];
   resources: Resource[];
+  /** Single-mention resources with no objective score, left out of the file. */
+  resources_dropped: number;
   thin_evidence: boolean;
+  /** Set when the run failed before it finished; the rest of the file holds what was gathered. */
+  error?: string;
 }
 
 // Intermediate shapes shared by the parsers and the fetchers.

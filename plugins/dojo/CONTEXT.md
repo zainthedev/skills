@@ -23,7 +23,7 @@ The learner's placement from intake: beginner, intermediate or advanced, judged 
 _Avoid_: skill level, seniority, experience
 
 **Intake**:
-The single round of questions `plan` asks before generating anything: goal, level, time, workspace directory, depth.
+The single round of questions `plan` asks before generating anything: goal, level, time, workspace directory.
 _Avoid_: onboarding, interview, questionnaire, assessment
 
 **Syllabus**:
@@ -122,9 +122,9 @@ _Avoid_: ranking, rating
 **Structure source**:
 A source whose ordering shapes the syllabus: the official docs guide, The Odin Project's outline when one exists, roadmap.sh, the tables of contents of top-endorsed courses.
 
-**Depth**:
-The research budget preset for a run: quick, standard or deep, each a cap on searches and fetches. The knob the token estimate is keyed on.
-_Avoid_: mode, tier, thoroughness, effort (a Claude setting)
+**Research budget**:
+The fixed cap on searches and fetches for a pass, set by what it produces: lesson, project or syllabus. Not a knob; ADR 0014 removed the depth question.
+_Avoid_: depth, mode, tier, thoroughness, effort (a Claude setting)
 
 ### Commands and help
 
@@ -153,7 +153,7 @@ The static HTML rendering of a workspace, built from the Markdown by the bundled
 _Avoid_: web pages, website, export
 
 **Token estimate**:
-The pre-flight number shown before generation, read from the token table for the chosen depth and level.
+The pre-flight number shown before generation, read from the token table for the item type and level.
 
 **Digest**:
 The computed block a research pass works from, printed by the context script for one item: profile, section plan, previous items' overviews and prompts, ledger, and the scout's top resources. Replaces reading the workspace files.
@@ -170,7 +170,7 @@ _Avoid_: tone guide, voice, slop filter
 - A **Lesson** is **Prediction questions**, a **Soft landing**, an **Assignment** and **Retrieval prompts**, with a **Sidecar** beside it.
 - The **Goal** becomes the **Capstone**; the **Level** sizes the **Soft landing** and decides whether a **Completion project** precedes the **Independent project**.
 - The **Scout** produces **Endorsements**; the **Rubric** turns them into a score; the **Ledger** keeps the result; the **Assignment** draws from the **Ledger**.
-- **Depth** bounds every research run and keys the **Token estimate**.
+- The **Research budget** bounds every research pass; the **Token estimate** is keyed on item type and **Level**.
 - **Coach** and **Quiz** read the **Syllabus** to find the current **Item**. **Quiz** reads **Sidecars**. **Coach** reads the learner's code and the lesson, and writes nothing.
 
 ## Flagged ambiguities

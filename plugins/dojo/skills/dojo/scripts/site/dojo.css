@@ -205,6 +205,11 @@ hr {
   color: var(--accent);
 }
 
+.not-generated {
+  color: var(--muted, #777);
+  font-size: 0.9em;
+}
+
 .sidebar-planned {
   color: var(--muted);
 }

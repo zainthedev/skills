@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { escapeHtml, headingAnchors, renderMarkdown, slugifyHeading } from "../skills/dojo/scripts/lib/markdown.ts";
+import { escapeHtml, headingAnchors, renderMarkdown, slugifyHeading, isSafeHref } from "../skills/dojo/scripts/lib/markdown.ts";
 
 test("strips frontmatter and renders headings with GitHub-style ids", () => {
   const html = renderMarkdown("---\nid: L01\n---\n# Title *here*\n\n## Core idea!\n\n### Sub-heading (2)\n\n## Core idea!\n");
@@ -69,4 +69,15 @@ test("onListItem sees the section, depth and index of each item", () => {
     },
   });
   assert.deepEqual(seen, ["Retrieval practice/1/1/false", "Retrieval practice/0/1/true", "Retrieval practice/0/2/true", "Other/0/1/false"]);
+});
+
+test("links with javascript:, data: or file: targets render as text", () => {
+  assert.equal(isSafeHref("https://x.y/z"), true);
+  assert.equal(isSafeHref("../lessons/L01.md#core-idea"), true);
+  assert.equal(isSafeHref("#anchor"), true);
+  assert.equal(isSafeHref("mailto:a@b.c"), true);
+  for (const href of ["javascript:alert(1)", "JavaScript:alert(1)", "data:text/html,x", "file:///etc/passwd", "vbscript:x"]) assert.equal(isSafeHref(href), false, href);
+  const html = renderMarkdown("Click [here](javascript:alert(1)) or ![x](javascript:alert(2)) or [ok](https://ok.example/).");
+  assert.doesNotMatch(html, /javascript:/);
+  assert.match(html, /Click here or x or <a href="https:\/\/ok\.example\/">ok<\/a>\./);
 });

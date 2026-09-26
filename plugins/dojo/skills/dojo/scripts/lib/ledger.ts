@@ -36,6 +36,8 @@ export interface Ledger {
   headerLine: number;
   rows: LedgerRow[];
   excluded: ExcludedRow[];
+  // The bullets under "## Notes", without the bullet marker.
+  notes: string[];
   // Canonical URLs of every row in the table.
   urls: Set<string>;
 }
@@ -71,6 +73,8 @@ export function parseLedger(text: string): Ledger {
   let header: string[] | null = null;
   let headerLine = 0;
   let inExcluded = false;
+  let inNotes = false;
+  const notes: string[] = [];
   let inFence = false;
 
   for (let i = parsed.frontmatterLines; i < lines.length; i++) {
@@ -84,6 +88,12 @@ export function parseLedger(text: string): Ledger {
     const h2 = /^##\s+(.*)$/.exec(line);
     if (h2) {
       inExcluded = h2[1].trim().toLowerCase() === "excluded";
+      inNotes = h2[1].trim().toLowerCase() === "notes";
+      continue;
+    }
+    if (inNotes) {
+      const bullet = /^\s*[-*]\s+(.*)$/.exec(line);
+      if (bullet) notes.push(bullet[1].trim());
       continue;
     }
     if (inExcluded) {
@@ -132,7 +142,7 @@ export function parseLedger(text: string): Ledger {
     });
   }
   const urls = new Set(rows.filter((r) => r.canonical).map((r) => r.canonical));
-  return { data: parsed.data, header, headerLine, rows, excluded, urls };
+  return { data: parsed.data, header, headerLine, rows, excluded, notes, urls };
 }
 
 export function ledgerHas(ledger: Ledger, url: string): boolean {
@@ -209,8 +219,10 @@ export function validateLedger(ledger: Ledger, file: string, knownIds?: Set<stri
       else if (knownIds && !knownIds.has(id)) warn(row.line, "ledger/used-in", `${id} is not in the syllabus`);
     }
   }
-  if (ledger.data.thin_evidence === true) {
-    warn(1, "ledger/thin-evidence", "thin_evidence is true; make sure Notes says so");
+  // Fixable: the warning clears once Notes carries a "Thin evidence:" bullet
+  // that says what was missing.
+  if (ledger.data.thin_evidence === true && !ledger.notes.some((n) => /^thin evidence:\s*(?!none\b|not yet\b)\S/i.test(n))) {
+    warn(1, "ledger/thin-evidence", 'thin_evidence is true; add "- Thin evidence: <what the scout could not find>" under Notes');
   }
   return out;
 }

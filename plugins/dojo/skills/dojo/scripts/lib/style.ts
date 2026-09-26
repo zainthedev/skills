@@ -180,7 +180,6 @@ export const VOCABULARY: readonly string[] = [
   "cutting-edge",
   "groundbreaking",
   "game-changing",
-  "paradigm",
   "holistic",
   "synergy",
   "realm",
@@ -235,7 +234,9 @@ const CONTRASTS: { pattern: RegExp; message: string }[] = [
 
 const FENCE = /^\s*(```|~~~)/;
 const DASHES = /[–—]/;
-const EMOJI = /\p{Extended_Pictographic}/u;
+// Copyright, registered and trademark signs are pictographic in Unicode but
+// are not emoji in prose.
+const EMOJI = /(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}/u;
 
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

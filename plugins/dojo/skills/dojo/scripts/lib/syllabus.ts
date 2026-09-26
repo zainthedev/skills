@@ -181,6 +181,17 @@ export function previousInSection(items: SyllabusItem[], item: SyllabusItem): st
   return out;
 }
 
+// IDs of every item before `item` in course order, any section, whose status
+// is generated: the ones the learner has not said they finished.
+export function unfinishedBefore(items: SyllabusItem[], item: SyllabusItem): string[] {
+  const out: string[] = [];
+  for (const other of items) {
+    if (other === item) break;
+    if (other.status === "generated") out.push(other.id);
+  }
+  return out;
+}
+
 // The section before the one given, by course order; null for the first.
 export function previousSectionNumber(syllabus: Syllabus, section: number): number | null {
   const index = syllabus.sections.findIndex((s) => s.number === section);
@@ -225,7 +236,13 @@ export function setStatus(text: string, id: string, status: string, doneDate = "
   const offset = content.trimStart().startsWith("|") ? 1 : 0;
   const statusIndex = offset + 4;
   const doneIndex = offset + 5;
-  if (parts.length <= doneIndex) throw new Error(`row for ${id} at line ${item.line} has too few columns`);
+  // With a closing pipe the last part is the text after it, not a cell.
+  const trimmed = content.trimEnd();
+  const closing = trimmed.endsWith("|") && !trimmed.endsWith("\\|");
+  const cells = parts.length - offset - (closing ? 1 : 0);
+  if (cells < SYLLABUS_COLUMNS.length) {
+    throw new Error(`row for ${id} at line ${item.line} has ${cells} cells, expected ${SYLLABUS_COLUMNS.length} (${SYLLABUS_COLUMNS.join(" | ")}); fix the row by hand`);
+  }
   parts[statusIndex] = replaceCell(parts[statusIndex], status);
   parts[doneIndex] = replaceCell(parts[doneIndex], date);
   const newContent = parts.join("|");
@@ -249,7 +266,7 @@ export function validateSyllabus(syllabus: Syllabus, file: string, workspace?: s
   const err = (line: number, rule: string, message: string) => out.push(finding("error", file, line, rule, message));
   const warn = (line: number, rule: string, message: string) => out.push(finding("warning", file, line, rule, message));
 
-  for (const key of ["topic", "level", "depth", "generated"]) {
+  for (const key of ["topic", "level", "generated"]) {
     if (!(key in syllabus.data) || syllabus.data[key] === "") err(1, "syllabus/frontmatter", `missing frontmatter key "${key}"`);
   }
   for (const key of ["slug", "dojo", "structure_sources"]) {

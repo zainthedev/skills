@@ -34,7 +34,7 @@ export async function scoutDevto(ctx: ScoutContext, topic: string): Promise<void
     for (const a of articles) {
       ctx.index.add(
         a.url,
-        { source: 'devto', thread_url: a.url, date: a.date, score: a.reactions, rank: null, excerpt: a.description.slice(0, 220) },
+        { source: 'devto', thread_url: a.url, date: a.date, score: a.reactions, rank: null, excerpt: a.description.slice(0, 220), author: null },
         { key: `devto:${a.id}`, title: a.title, titlePriority: 3 },
       );
     }

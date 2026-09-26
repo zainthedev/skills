@@ -28,6 +28,7 @@ const mention = (source: Mention['source'], thread: string, rank: number | null 
   score,
   rank,
   excerpt: 'x',
+  author: null,
 });
 
 const draft = (overrides: Partial<ResourceDraft> = {}): ResourceDraft => ({
@@ -155,6 +156,10 @@ test('sorting: objective score, then breadth, then mention count, then url', () 
     hn_mentions_24m: 0,
     objective_score: objective,
     max_objective: 70,
+    threads: 1,
+    newest_mention: null,
+    excerpt: '',
+    author_only: false,
   });
   const sorted = sortResources([make('https://c', 10, 3, 1), make('https://b', 30, 6, 2), make('https://a', 30, 6, 2), make('https://d', 30, 9, 1), make('https://e', 10, 3, 4)]);
   assert.deepEqual(

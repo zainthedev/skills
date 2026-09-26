@@ -283,6 +283,16 @@ function findClosing(src: string, from: number, delim: string, underscore: boole
   return -1;
 }
 
+const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
+const SAFE_SCHEMES = new Set(["http", "https", "mailto"]);
+
+// Relative links, anchors and http(s) or mailto targets; anything with
+// another scheme (javascript:, data:, file:) renders as plain text.
+export function isSafeHref(href: string): boolean {
+  const m = SCHEME.exec(href.trim());
+  return !m || SAFE_SCHEMES.has(m[1].toLowerCase());
+}
+
 function matchLink(src: string, from: number): { text: string; href: string; end: number } | null {
   let depth = 0;
   let close = -1;
@@ -346,7 +356,8 @@ export function renderInline(src: string, options: RenderOptions): string {
     if (ch === "!" && src[i + 1] === "[") {
       const link = matchLink(src, i + 1);
       if (link) {
-        out += `<img src="${escapeHtml(rewrite(link.href))}" alt="${escapeHtml(inlineToText(link.text))}">`;
+        if (isSafeHref(link.href)) out += `<img src="${escapeHtml(rewrite(link.href))}" alt="${escapeHtml(inlineToText(link.text))}">`;
+        else out += escapeHtml(inlineToText(link.text));
         i = link.end;
         continue;
       }
@@ -354,7 +365,8 @@ export function renderInline(src: string, options: RenderOptions): string {
     if (ch === "[") {
       const link = matchLink(src, i);
       if (link) {
-        out += `<a href="${escapeHtml(rewrite(link.href))}">${renderInline(link.text, options)}</a>`;
+        if (isSafeHref(link.href)) out += `<a href="${escapeHtml(rewrite(link.href))}">${renderInline(link.text, options)}</a>`;
+        else out += renderInline(link.text, options);
         i = link.end;
         continue;
       }

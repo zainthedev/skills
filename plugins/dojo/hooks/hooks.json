@@ -1,0 +1,17 @@
+{
+  "description": "Records every WebFetch in the workspace's fetch log, so lint checks citations against fetches the harness saw (ADR 0015). Plugin-level, because hooks declared in a skill's frontmatter run in the main session only and the research pass runs in a subagent.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/skills/dojo/scripts/fetch-log.ts\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

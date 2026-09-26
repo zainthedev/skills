@@ -8,18 +8,24 @@ import { basename, join, relative } from "node:path";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
 import { parseLedger, readFetched, type Ledger } from "./lib/ledger.ts";
 import { findSection, listItems, splitDoc, type ListItem } from "./lib/sections.ts";
+import { headingAnchors } from "./lib/markdown.ts";
 import { readSidecar } from "./lib/sidecar.ts";
 import { findItem, itemsInSection, parseSyllabus, type Syllabus, type SyllabusItem } from "./lib/syllabus.ts";
 import { findItemFile, readProfile, requireWorkspace, sidecarPath, type Profile } from "./lib/workspace.ts";
 import { describeItem, type ItemInfo } from "./next-item.ts";
 
 const USAGE = `usage: context.ts [workspace] <ID | syllabus> [--top N] [--json]
+       context.ts [workspace] quiz [<lesson ID> | <section number>] [--cap N] [--json]
 
 Prints the digest for a research pass: the learner's profile, the section
 plan, the previous items' overviews and prompts, the ledger, and the scout's
 top resources for the item (--top, default 12; 25 for the syllabus). For a
-checkpoint it prints the sampled lessons' prompts and answers instead of the
-ledger and scout. Markdown by default, --json for the same data as JSON.`;
+checkpoint it prints the sampled lessons' prompts, answers, heading anchors
+and assignment titles instead of the ledger and scout. "quiz" prints up to
+--cap (default 10) retrieval prompts with their answers and sources for the
+scope: one lesson, one section's lessons, or every done lesson (generated ones
+when none is done), interleaved so neighbours come from different lessons.
+Markdown by default, --json for the same data as JSON.`;
 
 interface ScoutResource {
   url: string;
@@ -31,6 +37,10 @@ interface ScoutResource {
   hn_mentions_24m: number;
   objective_score: number;
   max_objective: number;
+  threads?: number;
+  newest_mention?: string | null;
+  excerpt?: string;
+  author_only?: boolean;
 }
 
 interface Scout {
@@ -55,17 +65,36 @@ interface SampledLesson {
   title: string;
   file: string;
   prompts: { text: string; answer: string }[];
+  // Heading anchors the re-read list can point at, and the assignment's resource titles.
+  anchors: string[];
+  assignment: string[];
+}
+
+export interface QuizPrompt {
+  lesson: string;
+  title: string;
+  n: number;
+  text: string;
+  answer: string;
+  source: string;
+}
+
+export interface Quiz {
+  scope: string;
+  lessons: string[];
+  total: number;
+  prompts: QuizPrompt[];
 }
 
 export interface Digest {
   item: ItemInfo | null;
   kind: "item" | "syllabus";
-  profile: { level: string; depth: string; researchModel: string; goal: string; experience: string; notes: string; topic: string };
+  profile: { level: string; researchModel: string; goal: string; experience: string; notes: string; topic: string };
   section: { number: number; title: string; items: { id: string; type: string; title: string; status: string; hours: number | null }[] } | null;
   previous: PreviousDigest[];
   sampled: SampledLesson[];
   ledger: { rows: { score: number | null; type: string; title: string; url: string; freshness: string; version: string; usedIn: string[] }[]; excluded: { title: string; reason: string }[]; fetched: number | null; structureSources: string[] };
-  scout: { total: number; thin: boolean; generated: string; resources: { score: number; max: number; title: string | null; url: string; breadth: number; depth: number; curated: string[]; updated: string | null; hn: number }[] } | null;
+  scout: { total: number; thin: boolean; generated: string; resources: { score: number; max: number; title: string | null; url: string; threads: number; newest: string | null; curated: string[]; updated: string | null; hn: number; excerpt: string; authorOnly: boolean }[] } | null;
 }
 
 const STOPWORDS = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "your", "how", "what", "why", "when", "does", "are", "its", "one", "two", "section", "checkpoint", "project", "lesson"]);
@@ -122,8 +151,10 @@ function sampledLesson(workspace: string, syllabus: Syllabus, id: string): Sampl
   if (!item || item.type !== "lesson") return null;
   const file = findItemFile(workspace, item.id, item.type);
   if (!file) return null;
-  const doc = splitDoc(readFileSync(file, "utf8"));
+  const text = readFileSync(file, "utf8");
+  const doc = splitDoc(text);
   const retrieval = findSection(doc, "Retrieval practice");
+  const assignment = findSection(doc, "Assignment");
   const sidecar = readSidecar(sidecarPath(file));
   const prompts = retrieval ? listItems(retrieval).filter((it) => it.ordered) : [];
   return {
@@ -131,7 +162,55 @@ function sampledLesson(workspace: string, syllabus: Syllabus, id: string): Sampl
     title: item.title,
     file: `../lessons/${basename(file)}`,
     prompts: prompts.map((it, i) => ({ text: stripLink(it.text), answer: sidecar?.retrieval[i] ? itemText(sidecar.retrieval[i]) : "" })),
+    anchors: headingAnchors(doc.lines.slice(doc.frontmatterLines).join("\n")).map((a) => `#${a}`),
+    assignment: assignment ? listItems(assignment).filter((it) => it.ordered).map((it) => stripLink(it.text.replace(/^\*\*|\*\*\s*$/g, "").trim())) : [],
   };
+}
+
+// The lessons a quiz scope names: one ID, one section, or every done lesson
+// (the generated ones when none is done yet).
+function quizLessons(syllabus: Syllabus, scope: string | null): { label: string; ids: string[] } {
+  const lessons = syllabus.items.filter((it) => it.type === "lesson");
+  if (scope && /^[Ll]\d{2}$/.test(scope)) return { label: scope.toUpperCase(), ids: [scope.toUpperCase()] };
+  if (scope && /^\d+$/.test(scope)) return { label: `section ${scope}`, ids: lessons.filter((it) => it.section === Number(scope) && it.status !== "planned").map((it) => it.id) };
+  const done = lessons.filter((it) => it.status === "done").map((it) => it.id);
+  if (done.length > 0) return { label: "every finished lesson", ids: done };
+  return { label: "every generated lesson (none is done yet)", ids: lessons.filter((it) => it.status === "generated").map((it) => it.id) };
+}
+
+// Up to `cap` prompts, round-robin across the lessons so no two neighbours
+// share one, starting each lesson at a different prompt on different days.
+export function buildQuiz(workspace: string, scope: string | null, cap = 10, day = Math.floor(Date.now() / 86_400_000)): Quiz {
+  const syllabusFile = join(workspace, "syllabus.md");
+  if (!existsSync(syllabusFile)) throw new Error(`no syllabus.md in ${workspace}; run /dojo-plan first`);
+  const syllabus = parseSyllabus(readFileSync(syllabusFile, "utf8"));
+  const { label, ids } = quizLessons(syllabus, scope);
+  if (scope && ids.length === 1 && !findItem(syllabus.items, ids[0])) throw new Error(`no item ${scope} in the syllabus`);
+  const lessons = ids.map((id) => sampledLesson(workspace, syllabus, id)).filter((l): l is SampledLesson => l !== null && l.prompts.length > 0);
+  const queues = lessons.map((l) => {
+    const offset = day % l.prompts.length;
+    const rotated = [...l.prompts.slice(offset), ...l.prompts.slice(0, offset)].map((p, i) => ({ p, n: ((offset + i) % l.prompts.length) + 1 }));
+    return { lesson: l, rotated };
+  });
+  const total = lessons.reduce((sum, l) => sum + l.prompts.length, 0);
+  const prompts: QuizPrompt[] = [];
+  for (let round = 0; prompts.length < Math.min(cap, total); round++) {
+    for (const q of queues) {
+      if (prompts.length >= cap) break;
+      const entry = q.rotated[round];
+      if (!entry) continue;
+      prompts.push({ lesson: q.lesson.id, title: q.lesson.title, n: entry.n, text: entry.p.text, answer: entry.p.answer, source: `${q.lesson.file}#retrieval-practice` });
+    }
+  }
+  return { scope: label, lessons: lessons.map((l) => l.id), total, prompts };
+}
+
+export function formatQuiz(q: Quiz): string {
+  const out = [`# Quiz: ${q.scope}, ${q.prompts.length} of ${q.total} prompts from ${q.lessons.join(", ") || "no lessons"}`, ""];
+  q.prompts.forEach((p, i) => {
+    out.push(`${i + 1}. (${p.lesson} prompt ${p.n}) ${p.text}`, `   Answer: ${p.answer || "missing"}`, `   Source: ${p.source}`);
+  });
+  return out.join("\n").trimEnd() + "\n";
 }
 
 function readScout(workspace: string): Scout | null {
@@ -160,11 +239,13 @@ function scoutDigest(scout: Scout | null, top: number, title: string): Digest["s
       max: r.max_objective ?? 0,
       title: r.title,
       url: r.url,
-      breadth: r.breadth ?? 0,
-      depth: r.depth ?? 0,
+      threads: r.threads ?? 0,
+      newest: r.newest_mention ?? null,
       curated: r.curated ?? [],
       updated: r.freshness?.last_modified ?? null,
       hn: r.hn_mentions_24m ?? 0,
+      excerpt: r.excerpt ?? "",
+      authorOnly: r.author_only === true,
     }));
   return { total: scout.resources?.length ?? 0, thin: scout.thin_evidence === true, generated: scout.generated ?? "", resources };
 }
@@ -196,7 +277,6 @@ export function buildDigest(workspace: string, target: string, top?: number): Di
   const base = {
     profile: {
       level: profile.level,
-      depth: profile.depth,
       researchModel: profile.researchModel,
       goal: profile.goal,
       experience: profile.experience,
@@ -267,7 +347,7 @@ export function formatDigest(workspace: string, d: Digest): string {
     if (it.starter) files.push(`starter ${relative(workspace, it.starter)}/`);
     out.push(`Status ${it.status}. Files: ${files.join(", ")}.`);
   }
-  out.push(`Level ${p.level}, depth ${p.depth}, research model ${p.researchModel}.`, "");
+  out.push(`Level ${p.level}, research model ${p.researchModel}.`, "");
   out.push("## Learner", `Goal: ${p.goal || "not given"}`, `Experience: ${p.experience || "not given"}`, `Notes: ${p.notes || "none"}`, "");
 
   if (d.section) {
@@ -292,6 +372,8 @@ export function formatDigest(workspace: string, d: Digest): string {
     for (const lesson of d.sampled) {
       out.push(`### ${lesson.id} ${lesson.title} (link target: ${lesson.file}#retrieval-practice)`);
       lesson.prompts.forEach((pr, i) => out.push(`${i + 1}. ${pr.text}`, `   Answer: ${pr.answer || "missing"}`));
+      if (lesson.anchors.length > 0) out.push(`Anchors for the re-read list: ${lesson.anchors.join(", ")}`);
+      if (lesson.assignment.length > 0) out.push(`Assignment: ${lesson.assignment.map((t, i) => `${i + 1}. ${t}`).join("; ")}`);
       out.push("");
     }
   }
@@ -307,9 +389,11 @@ export function formatDigest(workspace: string, d: Digest): string {
     out.push("");
     if (d.scout) {
       out.push(`## Scout: top ${d.scout.resources.length} of ${d.scout.total} resources (thin evidence: ${d.scout.thin}; generated ${d.scout.generated})`);
-      out.push("| Score | Resource | Breadth | Depth | Curated | Updated | HN |", "|-------|----------|---------|-------|---------|---------|----|");
+      out.push("Threads is how many distinct threads or pages named it; Newest is the latest dated mention; the excerpt is the best-ranked reply's line. \"single author\" marks the rubric's self-promotion penalty.");
+      out.push("| Score | Resource | Threads | Newest | Curated | Updated | HN | Excerpt |", "|-------|----------|---------|--------|---------|---------|----|---------|");
       for (const r of d.scout.resources) {
-        out.push(`| ${r.score}/${r.max} | [${r.title ?? r.url}](${r.url}) | ${r.breadth} | ${r.depth} | ${r.curated.join("; ")} | ${r.updated ?? "unknown"} | ${r.hn} |`);
+        const flag = r.authorOnly ? " (single author)" : "";
+        out.push(`| ${r.score}/${r.max} | [${r.title ?? r.url}](${r.url})${flag} | ${r.threads} | ${r.newest ?? "unknown"} | ${r.curated.join("; ")} | ${r.updated ?? "unknown"} | ${r.hn} | ${r.excerpt.replace(/\|/g, "\\|")} |`);
       }
     } else {
       out.push("## Scout: no .dojo/scout.json; research from the ledger and the structure sources");
@@ -320,14 +404,23 @@ export function formatDigest(workspace: string, d: Digest): string {
 }
 
 async function main(): Promise<number> {
-  const args = parseCli(process.argv.slice(2), { top: { type: "string" } });
+  const args = parseCli(process.argv.slice(2), { top: { type: "string" }, cap: { type: "string" } });
   if (args.values.help) {
     console.log(USAGE);
     return 0;
   }
   const positionals = args.positionals;
+  const quizAt = positionals.findIndex((p) => p === "quiz");
+  if (quizAt === 0 || quizAt === 1) {
+    const workspace = requireWorkspace(quizAt === 1 ? positionals[0] : process.cwd());
+    const cap = typeof args.values.cap === "string" ? Number(args.values.cap) : 10;
+    const quiz = buildQuiz(workspace, positionals[quizAt + 1] ?? null, Number.isFinite(cap) && cap > 0 ? cap : 10);
+    if (args.values.json) console.log(JSON.stringify(quiz));
+    else process.stdout.write(formatQuiz(quiz));
+    return 0;
+  }
   const target = positionals.length >= 2 ? positionals[1] : positionals[0];
-  if (!target) throw Object.assign(new Error("expected <ID | syllabus>"), { code: 2 });
+  if (!target) throw Object.assign(new Error("expected <ID | syllabus | quiz>"), { code: 2 });
   const workspace = requireWorkspace(positionals.length >= 2 ? positionals[0] : process.cwd());
   const top = typeof args.values.top === "string" ? Number(args.values.top) : undefined;
   const digest = buildDigest(workspace, target, top && top > 0 ? top : undefined);

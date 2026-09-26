@@ -43,7 +43,7 @@ generated: 2026-09-25
 
 ## Rules
 
-- Every API named in the requirements is verified against its docs during the quick research pass, and those docs are in the ledger.
+- Every API named in the requirements is verified against its docs during the research pass, which uses the project budget, and those docs are in the ledger.
 - Every authored sentence follows STYLE.md.
 
 Done when the project file exists, the starter exists and runs when the kind is completion, and `lint` passes.

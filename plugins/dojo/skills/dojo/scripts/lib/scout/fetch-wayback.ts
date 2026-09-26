@@ -51,7 +51,7 @@ function recordWikiLinks(ctx: ScoutContext, subreddit: string, pageName: string,
     const excerpt = collapseWhitespace(`${link.heading} > ${link.line}`).slice(0, 220);
     const draft = ctx.index.add(
       link.url,
-      { source: 'reddit-wiki', thread_url: fetched.captureUrl, date: fetched.date, score: null, rank: null, excerpt },
+      { source: 'reddit-wiki', thread_url: fetched.captureUrl, date: fetched.date, score: null, rank: null, excerpt, author: null },
       { key: `reddit-wiki:${fetched.captureUrl}`, title: link.text, titlePriority: 2 },
     );
     if (!draft) continue;

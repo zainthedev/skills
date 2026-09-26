@@ -10,9 +10,6 @@ export const EVIDENCE_URL = REPO_URL + "/blob/main/plugins/dojo/docs/evidence.md
 export const LEVELS = ["beginner", "intermediate", "advanced"] as const;
 export type Level = (typeof LEVELS)[number];
 
-export const DEPTHS = ["quick", "standard", "deep"] as const;
-export type Depth = (typeof DEPTHS)[number];
-
 export const ITEM_TYPES = ["lesson", "project", "completion-project", "capstone", "checkpoint"] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 

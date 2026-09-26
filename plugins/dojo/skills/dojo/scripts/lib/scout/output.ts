@@ -14,24 +14,37 @@ export interface AssembleInput {
   threads: Thread[];
   drafts: ResourceDraft[];
   nowMs: number;
+  error?: string;
+}
+
+/** Worth keeping in the file: any objective signal, or more than one mention. */
+export function isWorthKeeping(r: Resource): boolean {
+  return r.objective_score > 0 || r.mentions.length >= 2;
 }
 
 export function assembleOutput(input: AssembleInput): ScoutOutput {
   const generated = new Date(input.nowMs).toISOString();
   const checked = generated.slice(0, 10);
-  const resources = sortResources(input.drafts.map((d) => finaliseResource(d, input.nowMs, checked)));
-  return {
+  const all = sortResources(input.drafts.map((d) => finaliseResource(d, input.nowMs, checked)));
+  const resources = all.filter(isWorthKeeping);
+  const requests = { ok: 0, error: 0, skipped: 0 };
+  for (const s of input.sources) requests[s.status]++;
+  const out: ScoutOutput = {
     dojo_scout: '0.1.0',
     topic: input.topic,
     generated,
     subreddits: input.subreddits,
     keywords: input.keywords,
     budget: input.budget,
-    sources: input.sources,
+    requests,
+    sources: input.sources.filter((s) => s.status !== 'ok'),
     threads: input.threads,
     resources,
-    thin_evidence: isThinEvidence(resources),
+    resources_dropped: all.length - resources.length,
+    thin_evidence: isThinEvidence(all),
   };
+  if (input.error) out.error = input.error;
+  return out;
 }
 
 function lineArray(items: unknown[]): string {

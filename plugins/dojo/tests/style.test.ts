@@ -62,3 +62,9 @@ test("the lists carry no duplicates", () => {
     assert.equal(new Set(list).size, list.length);
   }
 });
+
+test("plain technical words and typographic signs are not tells", () => {
+  assert.deepEqual(rules(["Functional programming is a paradigm; Node supports several."]), []);
+  assert.deepEqual(rules(["Copyright © 2026, ® and ™ stay."]), []);
+  assert.deepEqual(rules(["Ship it \u{1F680}"]), ["error style/emoji"]);
+});

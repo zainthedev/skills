@@ -2,7 +2,6 @@
 topic: Node fundamentals
 slug: node-fundamentals
 level: beginner
-depth: standard
 generated: 2026-09-01
 dojo: 0.1.0
 structure_sources:

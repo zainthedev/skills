@@ -12,9 +12,13 @@ import { topicTag, topicWords } from '../skills/dojo/scripts/lib/scout/fetch-se.
 import { parseYoutubePage, verificationCandidates } from '../skills/dojo/scripts/lib/scout/fetch-verify.ts';
 import { captureDate, waybackUrl } from '../skills/dojo/scripts/lib/scout/fetch-wayback.ts';
 import { assembleOutput, formatOutput } from '../skills/dojo/scripts/lib/scout/output.ts';
+import { parseCli as parseScoutCli } from '../skills/dojo/scripts/scout.ts';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { arcticError, parseArcticComments, parseArcticPosts } from '../skills/dojo/scripts/lib/scout/parse-arctic.ts';
 import { parseDevtoArticles } from '../skills/dojo/scripts/lib/scout/parse-devto.ts';
 import { parseHnItem, parseHnSearch } from '../skills/dojo/scripts/lib/scout/parse-hn.ts';
+import { parseKidsOrder } from '../skills/dojo/scripts/lib/scout/fetch-hn.ts';
 import { parseAtomFeed, parseCommentsFeed, parseSearchFeed } from '../skills/dojo/scripts/lib/scout/parse-reddit.ts';
 import { parseSeAnswers, parseSeQuestions } from '../skills/dojo/scripts/lib/scout/parse-se.ts';
 import { parseWikiPage } from '../skills/dojo/scripts/lib/scout/parse-wiki.ts';
@@ -33,6 +37,7 @@ const mention = (source: Mention['source'], thread: string, extra: Partial<Menti
   score: null,
   rank: null,
   excerpt: 'x',
+  author: null,
   ...extra,
 });
 
@@ -194,14 +199,21 @@ test('hacker news: search hits and item trees', () => {
   assert.equal(search.stories[1].url, 'https://learnnode.com/');
   assert.equal(search.hits[0].type, 'story');
 
-  const item = parseHnItem(json('hn-item.json'));
+  // Without the official API's kids order, ranks are unknown: Algolia's order is creation order.
+  const unranked = parseHnItem(json('hn-item.json'));
+  assert.ok(unranked);
+  assert.deepEqual(unranked.comments.filter((c) => c.rank !== null), []);
+  // With it, top-level ranks follow the page order, whatever Algolia's order was.
+  const item = parseHnItem(json('hn-item.json'), ['3572571', '3572276', '3572856', '3572469']);
   assert.ok(item);
   assert.equal(item.story.id, '3572210');
   assert.equal(item.comments.length, 9);
   assert.deepEqual(
-    item.comments.filter((c) => c.rank !== null).map((c) => c.rank),
-    [1, 2, 3, 4],
+    item.comments.filter((c) => c.rank !== null).map((c) => `${c.id}:${c.rank}`),
+    ['3572276:2', '3572469:4', '3572571:1', '3572856:3'],
   );
+  assert.deepEqual(parseKidsOrder({ kids: [1, 2] }), ['1', '2']);
+  assert.equal(parseKidsOrder({ title: 'x' }), null);
   assert.equal(item.comments[0].storyId, '3572210');
   assert.ok(item.comments.some((c) => c.links.length > 0));
   assert.equal(parseHnItem({ nope: true }), null);
@@ -336,6 +348,7 @@ test('reddit merge: feed comments and arctic scores meet by id, ranks follow sco
     score: 9,
     rank: 1,
     excerpt: 'I liked the FCC one. https://www.freecodecamp.org/learn/back-end-development-and-apis/',
+    author: 'lovesrayray2018',
   });
   const tp = ctx.index.find('https://www.tutorialspoint.com/nodejs/nodejs_express_framework.htm');
   assert.equal(tp?.mentions[0].rank, 3);
@@ -402,7 +415,17 @@ test('output: schema shape, ordering and line-friendly formatting', () => {
     nowMs,
   });
 
-  assert.deepEqual(Object.keys(out), ['dojo_scout', 'topic', 'generated', 'subreddits', 'keywords', 'budget', 'sources', 'threads', 'resources', 'thin_evidence']);
+  assert.deepEqual(Object.keys(out), ['dojo_scout', 'topic', 'generated', 'subreddits', 'keywords', 'budget', 'requests', 'sources', 'threads', 'resources', 'resources_dropped', 'thin_evidence']);
+  // Only failed or skipped requests keep their log line; the counts carry the rest.
+  assert.deepEqual(out.requests, { ok: 1, error: 0, skipped: 0 });
+  assert.deepEqual(out.sources, []);
+  assert.equal(typeof out.resources_dropped, 'number');
+  for (const r of out.resources) {
+    assert.ok(r.objective_score > 0 || r.mentions.length >= 2, `${r.url} has no signal and one mention`);
+    assert.equal(typeof r.threads, 'number');
+    assert.equal(typeof r.excerpt, 'string');
+    assert.equal(typeof r.author_only, 'boolean');
+  }
   assert.equal(out.dojo_scout, '0.1.0');
   assert.equal(out.generated, '2026-09-25T12:00:00.000Z');
   assert.deepEqual(out.subreddits, ['node', 'learnjavascript']);
@@ -412,13 +435,13 @@ test('output: schema shape, ordering and line-friendly formatting', () => {
   assert.ok(out.resources.length > 20, `expected the wiki and thread fixtures to yield many resources, got ${out.resources.length}`);
   const sources = new Set(['reddit-wiki', 'reddit-thread', 'reddit-comment', 'hn-story', 'hn-comment', 'stackexchange', 'devto']);
   for (const r of out.resources) {
-    assert.deepEqual(Object.keys(r).filter((k) => k !== 'stars' && k !== 'views'), ['url', 'domain', 'title', 'mentions', 'breadth', 'depth', 'curated', 'freshness', 'hn_mentions_24m', 'objective_score', 'max_objective']);
+    assert.deepEqual(Object.keys(r).filter((k) => k !== 'stars' && k !== 'views'), ['url', 'domain', 'title', 'mentions', 'breadth', 'depth', 'curated', 'freshness', 'hn_mentions_24m', 'objective_score', 'max_objective', 'threads', 'newest_mention', 'excerpt', 'author_only']);
     assert.ok(r.url.startsWith('https://'));
     assert.equal(r.domain, new URL(r.url).hostname);
     assert.ok(r.title === null || typeof r.title === 'string');
     assert.ok(r.mentions.length >= 1);
     for (const m of r.mentions) {
-      assert.deepEqual(Object.keys(m), ['source', 'thread_url', 'date', 'score', 'rank', 'excerpt']);
+      assert.deepEqual(Object.keys(m), ['source', 'thread_url', 'date', 'score', 'rank', 'excerpt', 'author']);
       assert.ok(sources.has(m.source));
       assert.ok(m.date === null || /^\d{4}-\d{2}-\d{2}$/.test(m.date));
     }
@@ -448,4 +471,15 @@ test('output: schema shape, ordering and line-friendly formatting', () => {
   const lines = text.split('\n');
   assert.ok(lines.length > out.resources.length + out.threads.length + 10, 'one element per line');
   assert.ok(lines.some((l) => l.startsWith('    {"url":"https://')));
+});
+
+test('cli: --slug needs no workspace and writes to the system temp dir', () => {
+  const parsed = parseScoutCli(['--slug', 'Rust Async', '--topic', 'Rust', '--keywords', 'learn rust', '--no-reddit']);
+  assert.ok(!('error' in parsed));
+  assert.equal(parsed.out, join(tmpdir(), 'dojo-scout-rust-async.json'));
+  assert.equal(parsed.workspace, tmpdir());
+  const missing = parseScoutCli(['--topic', 'Rust', '--keywords', 'k', '--no-reddit']);
+  assert.ok('error' in missing && /missing <workspace>/.test(missing.error));
+  const explicit = parseScoutCli(['/ws', '--slug', 'x', '--topic', 'Rust', '--keywords', 'k', '--no-reddit', '--out', '/elsewhere/s.json']);
+  assert.ok(!('error' in explicit) && explicit.out === '/elsewhere/s.json');
 });

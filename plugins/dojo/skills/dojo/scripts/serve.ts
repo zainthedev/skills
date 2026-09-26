@@ -11,7 +11,7 @@ import { isMain, parseCli, runCli } from "./lib/cli.ts";
 import { DATE_PATTERN, STATUSES } from "./lib/constants.ts";
 import { requireWorkspace } from "./lib/workspace.ts";
 import { markItem } from "./mark-done.ts";
-import { describeItem, readSyllabus } from "./next-item.ts";
+import { describeItem, readSyllabus, relativeItem } from "./next-item.ts";
 
 const USAGE = `usage: serve.ts <workspace> [--port 4321] [--site <dir>] [--stop]
 
@@ -81,6 +81,21 @@ export function isAlive(pid: number): boolean {
   }
 }
 
+// True when the request came from a page this server served: the Host header
+// names this loopback port and any Origin header does too. A page on another
+// site can still POST to a loopback address, so the API checks both.
+export function isLocalRequest(headers: { host?: string; origin?: string }, port: number): boolean {
+  const local = new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]);
+  const host = (headers.host ?? "").trim().toLowerCase();
+  if (!local.has(host)) return false;
+  if (headers.origin === undefined) return true;
+  try {
+    return local.has(new URL(headers.origin).host.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const text = JSON.stringify(body);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -138,9 +153,13 @@ export function startServer(opts: ServeOptions): Promise<RunningServer> {
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     try {
+      if (url.pathname.startsWith("/api/") && !isLocalRequest({ host: req.headers.host, origin: req.headers.origin }, (server.address() as AddressInfo).port)) {
+        sendJson(res, 403, { ok: false, error: "the dojo API answers pages it served itself only" });
+        return;
+      }
       if (url.pathname === "/api/status" && req.method === "GET") {
         const syllabus = readSyllabus(workspace);
-        sendJson(res, 200, { ok: true, workspace, items: syllabus.items.map((it) => describeItem(workspace, syllabus, it)) });
+        sendJson(res, 200, { ok: true, items: syllabus.items.map((it) => relativeItem(workspace, describeItem(workspace, syllabus, it))) });
         return;
       }
       if (url.pathname === "/api/done") {

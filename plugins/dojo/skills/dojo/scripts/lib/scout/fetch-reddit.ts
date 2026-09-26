@@ -1,4 +1,5 @@
-// The Reddit pipeline: search feeds per subreddit and keyword (top, all time and past year),
+// The Reddit pipeline: search feeds per subreddit and keyword (top, all time; past year for the
+// first keyword only, so the comment feeds get time within the budget),
 // thread metadata and comments with scores from Arctic Shift, and the comments feed of the top
 // threads. Only .rss feeds and the Arctic Shift JSON API are fetched, never reddit.com HTML.
 // The reddit limiter is the slow lane (one request per 30 seconds), so the order matters: all-time
@@ -55,7 +56,7 @@ export function arcticPostsUrl(ids: string[]): string {
 }
 
 export function arcticCommentsUrl(threadId: string): string {
-  return `https://arctic-shift.photon-reddit.com/api/comments/search?link_id=${threadId}&limit=100`;
+  return `https://arctic-shift.photon-reddit.com/api/comments/search?link_id=${threadId}&limit=100&sort_type=score&sort=desc`;
 }
 
 const FEED_ACCEPT = 'application/atom+xml, application/rss+xml, application/xml, text/xml';
@@ -249,7 +250,7 @@ export function emitRedditMentions(ctx: ScoutContext, state: RedditState): void 
       for (const link of body.links) {
         ctx.index.add(
           link.url,
-          { source: 'reddit-thread', thread_url: thread.url, date: thread.date, score: thread.score, rank: null, excerpt: excerptAround(body.text, linkNeedles(link)) },
+          { source: 'reddit-thread', thread_url: thread.url, date: thread.date, score: thread.score, rank: null, excerpt: excerptAround(body.text, linkNeedles(link)), author: null },
           { key: `reddit-thread:${id}`, title: link.text, titlePriority: 1 },
         );
       }
@@ -261,7 +262,7 @@ export function emitRedditMentions(ctx: ScoutContext, state: RedditState): void 
       for (const link of c.links) {
         ctx.index.add(
           link.url,
-          { source: 'reddit-comment', thread_url: thread.url, date: c.date, score: c.score, rank: ranks.get(c.id) ?? null, excerpt: excerptAround(c.text, linkNeedles(link)) },
+          { source: 'reddit-comment', thread_url: thread.url, date: c.date, score: c.score, rank: ranks.get(c.id) ?? null, excerpt: excerptAround(c.text, linkNeedles(link)), author: c.author },
           { key: `reddit-comment:${c.id}`, title: link.text, titlePriority: 1 },
         );
       }
@@ -278,7 +279,8 @@ export interface RedditPlan {
 /** Runs the whole Reddit side. Every phase stops cleanly at the discovery deadline. */
 export async function runRedditPipeline(ctx: ScoutContext, plan: RedditPlan): Promise<RedditState> {
   const state = createRedditState();
-  const searchFeeds = plan.subreddits.length * plan.keywords.length * 2;
+  const yearKeywords = plan.keywords.slice(0, 1);
+  const searchFeeds = plan.subreddits.length * (plan.keywords.length + yearKeywords.length);
   const estimate = Math.round(((searchFeeds + plan.maxThreads) * ctx.limiters.reddit.minIntervalMs) / 1000);
   ctx.log(`[scout] reddit plan: ${searchFeeds} search feeds and up to ${plan.maxThreads} comment feeds at one per ${ctx.limiters.reddit.minIntervalMs / 1000}s, about ${estimate}s if nothing is skipped`);
 
@@ -287,7 +289,7 @@ export async function runRedditPipeline(ctx: ScoutContext, plan: RedditPlan): Pr
   const provisional = rankThreads(state, ctx.nowMs).slice(0, plan.maxThreads);
   const earlyArctic = arcticPhase(ctx, state, provisional);
 
-  await searchPhase(ctx, state, plan.subreddits, plan.keywords, 'year');
+  await searchPhase(ctx, state, plan.subreddits, yearKeywords, 'year');
   await earlyArctic;
   await enrichThreads(ctx, state, [...state.threads.keys()]);
   state.selected = rankThreads(state, ctx.nowMs).slice(0, plan.maxThreads);

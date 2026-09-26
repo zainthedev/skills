@@ -45,7 +45,6 @@ test("readProfile exposes frontmatter fields and body sections", () => {
   const profile = readProfile(WORKSPACE_FIXTURE);
   assert.equal(profile.topic, "Node fundamentals");
   assert.equal(profile.level, "beginner");
-  assert.equal(profile.depth, "standard");
   assert.equal(profile.hoursPerWeek, 6);
   assert.equal(profile.targetDate, "2026-12-15");
   assert.equal(profile.created, "2026-09-01");

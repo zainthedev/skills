@@ -9,7 +9,6 @@ import { removeDir, runScript, tempDir } from "./helpers.ts";
 const options = {
   topic: "Node and Express",
   level: "intermediate",
-  depth: "standard",
   hours: 6,
   target: "2026-12-15",
   goal: "Build and deploy a small REST API\nwith auth and tests.",
@@ -31,7 +30,6 @@ test("creates every workspace file from the intake answers", () => {
       topic: "Node and Express",
       slug: "node-and-express",
       level: "intermediate",
-      depth: "standard",
       research_model: "inherit",
       hours_per_week: 6,
       target_date: "2026-12-15",
@@ -66,11 +64,10 @@ test("refuses to overwrite an existing profile", () => {
   }
 });
 
-test("validates level, depth, hours and target", () => {
+test("validates level, hours and target", () => {
   const dir = join(tempDir(), "ws");
   try {
     assert.throws(() => initWorkspace({ dir, ...options, level: "expert" }), /--level/);
-    assert.throws(() => initWorkspace({ dir, ...options, depth: "max" }), /--depth/);
     assert.throws(() => initWorkspace({ dir, ...options, hours: 0 }), /--hours/);
     assert.throws(() => initWorkspace({ dir, ...options, target: "soon" }), /--target/);
     assert.equal(existsSync(join(dir, "profile.md")), false);
@@ -95,7 +92,7 @@ test("command line: help, missing options and @file values", () => {
     const goalFile = join(base, "goal.txt");
     writeFileSync(goalFile, "Goal from a file.\n");
     const result = runScript("init-workspace.ts", [
-      "--dir", join(base, "ws"), "--topic", "T", "--level", "beginner", "--depth", "quick", "--hours", "4", "--target", "2026-12-01",
+      "--dir", join(base, "ws"), "--topic", "T", "--level", "beginner", "--hours", "4", "--target", "2026-12-01",
       "--goal", `@${goalFile}`, "--experience", "none", "--json",
     ]);
     assert.equal(result.status, 0, result.stderr);

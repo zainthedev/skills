@@ -3,7 +3,6 @@ dojo: 0.1.0
 topic: Node fundamentals
 slug: node-fundamentals
 level: beginner
-depth: standard
 hours_per_week: 6
 target_date: 2026-12-15
 created: 2026-09-01

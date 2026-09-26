@@ -65,7 +65,11 @@ export async function scoutStackExchange(ctx: ScoutContext, keywords: string[], 
       return;
     }
   }
-  const chosen = [...questions.values()].sort((a, b) => b.score - a.score).slice(0, MAX_QUESTIONS);
+  // Relevance order from the API, not a re-sort by score: vote counts surface famous
+  // questions on other topics. A question also has to name the topic in its title.
+  const words = topicWords(topic);
+  const chosen = [...questions.values()].filter((q) => words.length === 0 || words.some((w) => q.title.toLowerCase().includes(w))).slice(0, MAX_QUESTIONS);
+  ctx.log(`[scout] stackexchange: ${chosen.length} of ${questions.size} questions name the topic in their title`);
   if (chosen.length === 0) return;
 
   const { res, json } = await ctx.http.json({ kind: 'stackexchange', url: seAnswersUrl(chosen.map((q) => q.id)), limiter: ctx.limiters.se, retry: GENERIC_RETRY, deadline: ctx.discoveryDeadline });
@@ -82,7 +86,7 @@ export async function scoutStackExchange(ctx: ScoutContext, keywords: string[], 
     for (const link of a.links) {
       const draft = ctx.index.add(
         link.url,
-        { source: 'stackexchange', thread_url: q.link, date: a.date, score: a.score, rank: a.rank, excerpt: excerptAround(a.text, linkNeedles(link)) },
+        { source: 'stackexchange', thread_url: q.link, date: a.date, score: a.score, rank: a.rank, excerpt: excerptAround(a.text, linkNeedles(link)), author: a.owner ?? null },
         { key: `stackexchange:${a.id}`, title: link.text, titlePriority: 1 },
       );
       if (draft) links++;

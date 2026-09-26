@@ -1,5 +1,6 @@
 // Parsers for the Hacker News Algolia API: search hits (stories) and item trees (a story with
-// its comments). Comment points are always null on Algolia, so HN comments carry a tree rank only.
+// its comments). Comment points are always null on Algolia, so HN comments carry a rank only,
+// and that rank comes from the official API's kids order when the fetcher supplies it.
 
 import { extractLinksFromHtml, htmlToText, toDay } from './text.ts';
 import type { ExtractedLink } from './types.ts';
@@ -93,20 +94,27 @@ export interface HnItem {
   comments: HnComment[];
 }
 
-export function parseHnItem(json: unknown): HnItem | null {
+/**
+ * Parses an Algolia item tree. Algolia lists children in creation order, so top-level ranks are
+ * taken from `kidsOrder`, the `kids` array of the official Hacker News API item, which is in the
+ * order the page shows (highest ranked first). Without it, ranks are null: unknown, not earliest.
+ */
+export function parseHnItem(json: unknown, kidsOrder: string[] | null = null): HnItem | null {
   if (!json || typeof json !== 'object') return null;
   const root = json as Record<string, unknown>;
   const rootId = root.id === undefined || root.id === null ? null : String(root.id);
   if (!rootId) return null;
   const story = toStory(root, rootId);
   const comments: HnComment[] = [];
+  const rankOf = new Map<string, number>();
+  (kidsOrder ?? []).forEach((id, i) => rankOf.set(String(id), i + 1));
   const walk = (node: Record<string, unknown>, depth: number, topRank: number): void => {
     const children = Array.isArray(node.children) ? (node.children as Record<string, unknown>[]) : [];
     children.forEach((child, i) => {
       const id = child.id === undefined || child.id === null ? null : String(child.id);
       if (!id) return;
       const html = str(child.text) ?? '';
-      const rank = depth === 0 ? i + 1 : null;
+      const rank = depth === 0 ? (rankOf.get(id) ?? null) : null;
       comments.push({
         id,
         storyId: rootId,

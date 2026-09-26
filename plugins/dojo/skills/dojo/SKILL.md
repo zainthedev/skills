@@ -23,10 +23,10 @@ Read the format for the thing you are producing, and only that:
 - Checkpoint: [CHECKPOINT-FORMAT.md](CHECKPOINT-FORMAT.md)
 - Ledger: [LEDGER-FORMAT.md](LEDGER-FORMAT.md)
 - Profile: [PROFILE-FORMAT.md](PROFILE-FORMAT.md)
-- Research passes, depth budgets, the scout and the research brief: [RESEARCH.md](RESEARCH.md)
+- Research passes, their budgets, the scout and fetch recording: [RESEARCH.md](RESEARCH.md); the brief a command fills in: [templates/brief.md](templates/brief.md)
 - Scoring a resource: [RUBRIC.md](RUBRIC.md)
 - How every sentence for the learner is written: [STYLE.md](STYLE.md)
-- Token estimates per item type and depth: [TOKENS.md](TOKENS.md)
+- Token estimates per item type and level: [TOKENS.md](TOKENS.md)
 - What the AI may do during learning: [AI-RULES.md](AI-RULES.md)
 
-`scripts/context.ts <workspace> <ID>` prints the digest a pass works from instead of reading the workspace files. Every generated file is checked by `scripts/lint.ts`, style rules included. A file that fails lint is not done.
+`scripts/context.ts <workspace> <ID>` prints the digest a pass works from instead of reading the workspace files; `scripts/context.ts <workspace> quiz` prints a capped quiz. Every generated file is checked by `scripts/lint.ts`, style rules included. A file that fails lint is not done.

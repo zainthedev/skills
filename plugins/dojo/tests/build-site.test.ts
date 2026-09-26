@@ -5,6 +5,21 @@ import { join } from "node:path";
 import { buildSite } from "../skills/dojo/scripts/build-site.ts";
 import { removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
+test("--if-exists does nothing without a site and rebuilds when one exists", () => {
+  const ws = tempWorkspace();
+  try {
+    const skipped = runScript("build-site.ts", [ws, "--if-exists"]);
+    assert.equal(skipped.status, 0, skipped.stderr);
+    assert.match(skipped.stdout, /no site built yet/);
+    assert.equal(existsSync(join(ws, "site", "index.html")), false);
+    assert.equal(runScript("build-site.ts", [ws]).status, 0);
+    const rebuilt = runScript("build-site.ts", [ws, "--if-exists"]);
+    assert.match(rebuilt.stdout, /^built \d+ files/);
+  } finally {
+    removeDir(ws);
+  }
+});
+
 test("writes the index, one page per item, lesson zero and the assets", () => {
   const ws = tempWorkspace();
   try {
@@ -28,8 +43,9 @@ test("writes the index, one page per item, lesson zero and the assets", () => {
     assert.match(index, /<h2>Section 1: Node fundamentals<\/h2>/);
     assert.match(index, /<tr class="status-done" data-id="L01">.*<a href="lessons\/L01-what-node-is.html">What Node is<\/a>.*<span class="badge badge-done">done<\/span>.*<td>2026-09-20<\/td>/);
     assert.match(index, /<tr class="status-planned" data-id="P02">.*<td>Build a directory watcher<\/td>/);
-    assert.equal((index.match(/class="done-button"/g) ?? []).length, 5);
-    assert.match(index, /<button type="button" class="done-button" data-id="P02" data-status="done">Mark done<\/button>/);
+    // P02 is planned with no file, so it gets a note instead of a button.
+    assert.equal((index.match(/class="done-button"/g) ?? []).length, 4);
+    assert.match(index, /<tr class="status-planned" data-id="P02">.*<span class="not-generated">not generated yet<\/span>/);
     assert.match(index, /<button type="button" class="done-button" data-id="L01" data-status="generated">Mark not done<\/button>/);
     assert.match(index, /href="assets\/dojo.css"/);
     assert.match(index, /<script defer src="assets\/dojo.js">/);
@@ -134,6 +150,22 @@ test("command line honours --out and reports failures", () => {
     assert.equal(failed.status, 1);
     assert.match(failed.stderr, /no syllabus\.md/);
     assert.equal(runScript("build-site.ts", ["--help"]).status, 0);
+  } finally {
+    removeDir(ws);
+  }
+});
+
+test("the site script ships as plain JavaScript stripped from the TypeScript source", () => {
+  const ws = tempWorkspace();
+  try {
+    assert.equal(runScript("build-site.ts", [ws]).status, 0);
+    const js = readFileSync(join(ws, "site", "assets", "dojo.js"), "utf8");
+    assert.doesNotMatch(js, /\bvar\b/);
+    assert.doesNotMatch(js, /: (string|void|HTMLButtonElement|NoticeKind)\b|interface DoneResponse|as DoneResponse/);
+    assert.match(js, /const setupReveals = /);
+    assert.match(js, /\/api\/done/);
+    // It parses as JavaScript.
+    new Function(js);
   } finally {
     removeDir(ws);
   }

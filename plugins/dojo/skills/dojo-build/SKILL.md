@@ -3,6 +3,7 @@ name: dojo-build
 description: Render your dojo workspace to a browsable local site with a done button, and serve it.
 argument-hint: "[output directory]"
 disable-model-invocation: true
+allowed-tools: Bash(node *), Bash(bun *), Bash(curl *)
 ---
 
 Render the **site** and serve it. Call the Skill tool with "dojo": it gives you the dojo root that the commands below run from. Find the workspace, the directory holding `profile.md` here or above, then:

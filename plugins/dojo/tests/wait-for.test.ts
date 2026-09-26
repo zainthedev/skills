@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { waitFor } from "../skills/dojo/scripts/wait-for.ts";
+import { scoutFileForSlug, waitFor } from "../skills/dojo/scripts/wait-for.ts";
 import { removeDir, runScript, tempDir } from "./helpers.ts";
 
 test("resolves once the file exists", async () => {
@@ -57,6 +58,25 @@ test("the CLI exits 1 on timeout and 0 when the file is ready", () => {
     assert.equal(ready.status, 0);
     assert.equal(ready.stdout.trim(), file);
     assert.equal(runScript("wait-for.ts", ["--help"]).status, 0);
+  } finally {
+    removeDir(dir);
+  }
+});
+
+test("--slug names the scout's temp file and --into moves the ready file into place", () => {
+  const dir = tempDir();
+  try {
+    assert.equal(scoutFileForSlug("Rust Async!"), join(tmpdir(), "dojo-scout-rust-async.json"));
+    const file = join(dir, "dojo-scout-test.json");
+    writeFileSync(file, '{"ok": true}');
+    const into = join(dir, "ws", ".dojo", "scout.json");
+    const moved = runScript("wait-for.ts", [file, "--timeout", "5", "--interval", "0.2", "--into", into]);
+    assert.equal(moved.status, 0, moved.stderr);
+    assert.equal(moved.stdout.trim(), into);
+    assert.equal(existsSync(file), false);
+    assert.equal(readFileSync(into, "utf8"), '{"ok": true}');
+    const noArgs = runScript("wait-for.ts", []);
+    assert.equal(noArgs.status, 2);
   } finally {
     removeDir(dir);
   }

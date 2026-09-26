@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { WORKSPACE_FIXTURE, removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
@@ -21,7 +21,7 @@ test("marks an item done with today's date by default", () => {
     const today = new Date().toISOString().slice(0, 10);
     assert.equal(result.stdout.trim(), `| P02 | capstone | Build a directory watcher | 10 | done | ${today} |`);
     const text = readFileSync(join(ws, "syllabus.md"), "utf8");
-    assert.deepEqual(changedLines(text), [24]);
+    assert.deepEqual(changedLines(text), [23]);
   } finally {
     removeDir(ws);
   }
@@ -34,7 +34,23 @@ test("--status and --date are honoured and other statuses clear the date", () =>
     assert.deepEqual(JSON.parse(dated.stdout), { id: "P02", status: "done", done: "2026-10-01", row: "| P02 | capstone | Build a directory watcher | 10 | done | 2026-10-01 |" });
     const reverted = runScript("mark-done.ts", [ws, "L01", "--status", "planned"]);
     assert.equal(reverted.stdout.trim(), "| L01 | lesson | What Node is | 2 | planned | |");
-    assert.deepEqual(changedLines(readFileSync(join(ws, "syllabus.md"), "utf8")), [21, 24]);
+    assert.deepEqual(changedLines(readFileSync(join(ws, "syllabus.md"), "utf8")), [20, 23]);
+  } finally {
+    removeDir(ws);
+  }
+});
+
+test("refuses a row with too few cells instead of corrupting it", () => {
+  const ws = tempWorkspace();
+  try {
+    const path = join(ws, "syllabus.md");
+    const broken = original.replace("| P02 | capstone | Build a directory watcher | 10 | planned | |", "| P02 | capstone | Build a directory watcher | 10 | planned |");
+    assert.notEqual(broken, original);
+    writeFileSync(path, broken);
+    const result = runScript("mark-done.ts", [ws, "P02"]);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /row for P02 at line \d+ has 5 cells, expected 6/);
+    assert.equal(readFileSync(path, "utf8"), broken);
   } finally {
     removeDir(ws);
   }

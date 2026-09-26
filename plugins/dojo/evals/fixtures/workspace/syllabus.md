@@ -2,7 +2,6 @@
 topic: Node and Express
 slug: node-express
 level: intermediate
-depth: quick
 generated: 2026-09-25
 dojo: 0.1.0
 structure_sources:

@@ -4,7 +4,7 @@
 // only the IDs given). One line per finding; exit 1 on any error.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
 import {
   BEFORE_YOU_START_LINE,
@@ -17,11 +17,11 @@ import {
   WORD_BUDGET,
   type Level,
 } from "./lib/constants.ts";
-import { finding, formatFinding, hasErrors, type Finding, type Severity } from "./lib/findings.ts";
+import { finding, hasErrors, type Finding, type Severity } from "./lib/findings.ts";
 import { asList, asNumber, asString } from "./lib/frontmatter.ts";
 import { canonicalUrl, findRow, ledgerHas, parseLedger, readFetched, validateLedger, type Ledger } from "./lib/ledger.ts";
-import { headingAnchors } from "./lib/markdown.ts";
-import { fenceCount, findSection, firstContentLine, isBlank, listItems, splitDoc, urlsIn, wordCount, type Doc, type ListItem, type Section } from "./lib/sections.ts";
+import { headingAnchors, isSafeHref } from "./lib/markdown.ts";
+import { fenceCount, findSection, firstContentLine, isBlank, linksIn, listItems, splitDoc, urlsIn, wordCount, type Doc, type ListItem, type Section } from "./lib/sections.ts";
 import { readSidecar } from "./lib/sidecar.ts";
 import { checkStyle } from "./lib/style.ts";
 import { findItem, parseSyllabus, previousSectionNumber, validateSyllabus, type Syllabus, type SyllabusItem } from "./lib/syllabus.ts";
@@ -30,8 +30,11 @@ import { findItemFile, idFromPath, itemPath, readProfile, requireWorkspace, side
 const USAGE = `usage: lint.ts <workspace> [ID ...] [--json]
 
 With no IDs, checks syllabus.md, ledger.md and every generated or done item.
-With IDs, checks only those items. Prints one line per finding:
-  error|warning <file>:<line> <rule>: <message>
+With IDs, checks only those items. Findings are grouped by file, then by
+severity and rule, one "<line>: <message>" per finding under each:
+  <file>
+    error <rule>
+      12: <message>
 Exit 1 when any error was found, 0 otherwise.`;
 
 interface Context {
@@ -499,18 +502,41 @@ function lintCheckpoint(ctx: Context, file: string, doc: Doc, item: SyllabusItem
   if (below) checkStyleSections(ctx, file, [below]);
 }
 
+// Every link target in the file carries a safe scheme, so the built site
+// never gets a live javascript: or data: link.
+function checkLinkSchemes(ctx: Context, file: string, text: string): void {
+  let inFence = false;
+  text.split("\n").forEach((line, i) => {
+    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
+    if (inFence) return;
+    for (const link of linksIn(line)) {
+      if (!isSafeHref(link.target)) report(ctx, "error", file, i + 1, "link/scheme", `link target "${link.target}" must be http(s), mailto, relative or an anchor`);
+    }
+  });
+}
+
 function lintItem(ctx: Context, item: SyllabusItem): void {
   const file = findItemFile(ctx.workspace, item.id, item.type);
   if (!file) {
     report(ctx, "error", itemPath(ctx.workspace, item), 0, "item/missing-file", `no file for ${item.id} (${item.status})`);
     return;
   }
-  const text = readFileSync(file, "utf8");
-  const doc = splitDoc(text);
-  checkCommonFrontmatter(ctx, file, doc, item);
-  if (item.type === "lesson") lintLesson(ctx, file, doc, item);
-  else if (item.type === "checkpoint") lintCheckpoint(ctx, file, doc, item);
-  else lintProject(ctx, file, doc, item);
+  try {
+    const text = readFileSync(file, "utf8");
+    const doc = splitDoc(text);
+    checkCommonFrontmatter(ctx, file, doc, item);
+    checkLinkSchemes(ctx, file, text);
+    if (item.type === "lesson") {
+      lintLesson(ctx, file, doc, item);
+      const sidecar = sidecarPath(file);
+      if (existsSync(sidecar)) checkLinkSchemes(ctx, sidecar, readFileSync(sidecar, "utf8"));
+    } else if (item.type === "checkpoint") lintCheckpoint(ctx, file, doc, item);
+    else lintProject(ctx, file, doc, item);
+  } catch (error) {
+    // A parse failure in one file (bad frontmatter, most often) is one finding
+    // that names the file, not the end of the run.
+    report(ctx, "error", file, 1, "item/parse", `cannot parse ${basename(file)}: ${(error as Error).message}`);
+  }
 }
 
 export function lintWorkspace(workspace: string, ids: string[] = []): LintResult {
@@ -576,6 +602,28 @@ export function lintWorkspace(workspace: string, ids: string[] = []): LintResult
   return summarize(findings);
 }
 
+// Findings grouped by file, then severity and rule: the file and rule names
+// appear once each, so a messy draft's report is a third of the flat form.
+export function formatGrouped(findings: Finding[], base: string): string[] {
+  const out: string[] = [];
+  const byFile = new Map<string, Finding[]>();
+  for (const f of findings) byFile.set(f.file, [...(byFile.get(f.file) ?? []), f]);
+  for (const [file, list] of byFile) {
+    out.push(relative(base, file) || ".");
+    const byRule = new Map<string, Finding[]>();
+    for (const f of list) {
+      const key = `${f.severity} ${f.rule}`;
+      byRule.set(key, [...(byRule.get(key) ?? []), f]);
+    }
+    const keys = [...byRule.keys()].sort((a, b) => (a.startsWith("error") === b.startsWith("error") ? a.localeCompare(b) : a.startsWith("error") ? -1 : 1));
+    for (const key of keys) {
+      out.push(`  ${key}`);
+      for (const f of byRule.get(key)!) out.push(`    ${f.line}: ${f.message}`);
+    }
+  }
+  return out;
+}
+
 function summarize(findings: Finding[]): LintResult {
   return {
     findings,
@@ -597,7 +645,7 @@ async function main(): Promise<number> {
   if (args.values.json) {
     console.log(JSON.stringify({ workspace, errors: result.errors, warnings: result.warnings, findings: result.findings }, null, 2));
   } else {
-    for (const f of result.findings) console.log(formatFinding(f, workspace));
+    for (const line of formatGrouped(result.findings, workspace)) console.log(line);
     console.log(`${result.errors} error(s), ${result.warnings} warning(s)`);
   }
   return hasErrors(result.findings) ? 1 : 0;

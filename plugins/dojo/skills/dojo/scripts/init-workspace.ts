@@ -3,15 +3,15 @@
 // the item directories, the quiz log and an empty ledger.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fail, isMain, parseCli, requireString, runCli, textOrFile, todayIso } from "./lib/cli.ts";
-import { DATE_PATTERN, DEPTHS, DOJO_VERSION, EVIDENCE_URL, LEVELS } from "./lib/constants.ts";
+import { DATE_PATTERN, DOJO_VERSION, EVIDENCE_URL, LEVELS } from "./lib/constants.ts";
 import { withFrontmatter } from "./lib/frontmatter.ts";
 import { slugify } from "./lib/workspace.ts";
 
 const USAGE = `usage: init-workspace.ts --dir <path> --topic <text> --level <beginner|intermediate|advanced>
-                         --depth <quick|standard|deep> --hours <n> --target <YYYY-MM-DD>
+                         --hours <n> --target <YYYY-MM-DD>
                          --goal <text or @file> --experience <text or @file>
                          [--slug <slug>] [--notes <text or @file>] [--created <YYYY-MM-DD>] [--json]
 
@@ -26,7 +26,6 @@ export interface InitOptions {
   topic: string;
   slug?: string;
   level: string;
-  depth: string;
   hours: number;
   target: string;
   goal: string;
@@ -54,7 +53,6 @@ export function fillTemplate(template: string, values: Record<string, string>): 
 
 export function initWorkspace(opts: InitOptions): InitResult {
   if (!(LEVELS as readonly string[]).includes(opts.level)) fail(`--level must be one of ${LEVELS.join(", ")}`, 2);
-  if (!(DEPTHS as readonly string[]).includes(opts.depth)) fail(`--depth must be one of ${DEPTHS.join(", ")}`, 2);
   if (!Number.isFinite(opts.hours) || opts.hours <= 0) fail("--hours must be a positive number", 2);
   if (!DATE_PATTERN.test(opts.target)) fail("--target must be a YYYY-MM-DD date", 2);
   if (opts.topic.trim() === "") fail("--topic must not be empty", 2);
@@ -84,7 +82,6 @@ export function initWorkspace(opts: InitOptions): InitResult {
         topic: opts.topic.trim(),
         slug,
         level: opts.level,
-        depth: opts.depth,
         research_model: "inherit",
         hours_per_week: opts.hours,
         target_date: opts.target,
@@ -103,7 +100,6 @@ export function initWorkspace(opts: InitOptions): InitResult {
       hours_per_week: String(opts.hours),
       target_date: opts.target,
       level: opts.level,
-      depth: opts.depth,
       evidence_url: EVIDENCE_URL,
       dojo_version: DOJO_VERSION,
       created,
@@ -130,7 +126,6 @@ async function main(): Promise<number> {
     topic: { type: "string" },
     slug: { type: "string" },
     level: { type: "string" },
-    depth: { type: "string" },
     hours: { type: "string" },
     target: { type: "string" },
     goal: { type: "string" },
@@ -148,7 +143,6 @@ async function main(): Promise<number> {
     topic: textOrFile(requireString(v, "topic")),
     slug: typeof v.slug === "string" ? v.slug : undefined,
     level: requireString(v, "level"),
-    depth: requireString(v, "depth"),
     hours: Number(requireString(v, "hours")),
     target: requireString(v, "target"),
     goal: textOrFile(requireString(v, "goal")),
@@ -157,10 +151,9 @@ async function main(): Promise<number> {
     created: typeof v.created === "string" ? v.created : undefined,
   });
   if (v.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(result));
   } else {
-    console.log(`created workspace ${result.workspace}`);
-    for (const file of result.files) console.log(`  ${file}`);
+    console.log(`created workspace ${result.workspace}: ${result.files.map((f) => relative(result.workspace, f)).join(", ")}, lessons/, projects/, checkpoints/`);
   }
   return 0;
 }

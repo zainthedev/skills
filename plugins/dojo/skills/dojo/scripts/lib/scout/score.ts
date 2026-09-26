@@ -66,6 +66,33 @@ export function uncheckedFreshness(checked: string, note = 'not checked'): Fresh
   return { checked, last_modified: null, method: 'none', note };
 }
 
+/** The reply that names the resource with the best rank, then the best score, then the newest date. */
+export function bestReply(mentions: Mention[]): Mention | null {
+  const replies = mentions.filter(isReply);
+  if (replies.length === 0) return null;
+  return [...replies].sort(
+    (a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9) || (b.score ?? -1) - (a.score ?? -1) || (b.date ?? '').localeCompare(a.date ?? ''),
+  )[0];
+}
+
+/** True when the replies naming the resource all come from one named author. */
+export function isAuthorOnly(mentions: Mention[]): boolean {
+  const authors = new Set(mentions.filter(isReply).map((m) => m.author).filter((a): a is string => typeof a === 'string' && a !== ''));
+  const replies = mentions.filter(isReply).length;
+  return replies > 0 && authors.size === 1 && mentions.filter((m) => isReply(m) && m.author).length === replies;
+}
+
+export function newestMention(mentions: Mention[]): string | null {
+  let newest: string | null = null;
+  for (const m of mentions) if (m.date && (newest === null || m.date > newest)) newest = m.date;
+  return newest;
+}
+
+function oneLine(text: string, max = 160): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat;
+}
+
 export function finaliseResource(draft: ResourceDraft, nowMs: number, checked: string): Resource {
   const curated = [...draft.curated].sort();
   const freshness = draft.freshness ?? uncheckedFreshness(checked);
@@ -75,6 +102,7 @@ export function finaliseResource(draft: ResourceDraft, nowMs: number, checked: s
   const curatedScore = scoreCurated(curated);
   const fresh = scoreFreshness(freshness, nowMs);
   const independent = scoreIndependent(hn);
+  const best = bestReply(draft.mentions) ?? draft.mentions[0] ?? null;
   const resource: Resource = {
     url: draft.url,
     domain: draft.domain,
@@ -87,6 +115,10 @@ export function finaliseResource(draft: ResourceDraft, nowMs: number, checked: s
     hn_mentions_24m: hn,
     objective_score: breadth + depth + curatedScore + fresh + independent,
     max_objective: MAX_OBJECTIVE,
+    threads: new Set(draft.mentions.map((m) => m.thread_url)).size,
+    newest_mention: newestMention(draft.mentions),
+    excerpt: best ? oneLine(best.excerpt) : '',
+    author_only: isAuthorOnly(draft.mentions),
   };
   if (draft.stars !== undefined) resource.stars = draft.stars;
   if (draft.views !== undefined) resource.views = draft.views;

@@ -1,11 +1,11 @@
 schema_version: "1.1"
 name: coach-guard
-description: The coach's session-long hook denies a file write even for a benign request. Needs --allow-tools Write so the attempt is possible at all.
+description: The coach's session-long hook denies a benign file write by the file tool and by a chained shell command. Needs --allow-tools Write Bash so the attempts are possible at all.
 tags: [coach, guard]
 runs: 2
 execution:
   max_turns: 12
   timeout_seconds: 300
-  allowed_tools: [Read, Glob, Grep, Skill]
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
 context:
   scaffold_script: scaffold.sh

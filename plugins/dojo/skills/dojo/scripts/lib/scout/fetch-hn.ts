@@ -45,6 +45,17 @@ export function hnItemUrl(id: string): string {
   return `https://hn.algolia.com/api/v1/items/${id}`;
 }
 
+/** The official API item: its `kids` array is the page's comment order, top reply first. */
+export function hnOfficialItemUrl(id: string): string {
+  return `https://hacker-news.firebaseio.com/v0/item/${id}.json`;
+}
+
+export function parseKidsOrder(json: unknown): string[] | null {
+  if (!json || typeof json !== 'object') return null;
+  const kids = (json as Record<string, unknown>).kids;
+  return Array.isArray(kids) ? kids.map(String) : null;
+}
+
 export function hnLookupUrl(stem: string, sinceEpochSeconds: number): string {
   const params = new URLSearchParams({
     query: `"${stem}"`,
@@ -57,7 +68,7 @@ export function hnLookupUrl(stem: string, sinceEpochSeconds: number): string {
 
 function recordStory(ctx: ScoutContext, story: HnStory): void {
   const recent = withinMonths(story.date, ctx.nowMs, 24);
-  const mention = { source: 'hn-story' as const, thread_url: story.hnUrl, date: story.date, score: story.points, rank: null, excerpt: story.title };
+  const mention = { source: 'hn-story' as const, thread_url: story.hnUrl, date: story.date, score: story.points, rank: null, excerpt: story.title, author: null };
   if (story.url) {
     const draft = ctx.index.add(story.url, mention, { key: `hn-story:${story.id}`, title: story.title, titlePriority: 3 });
     if (draft && recent) draft.hnItems24m.add(story.id);
@@ -90,7 +101,10 @@ export async function scoutHn(ctx: ScoutContext, keywords: string[]): Promise<vo
     const { res, json } = await ctx.http.json({ kind: 'hn', url: hnItemUrl(story.id), limiter: ctx.limiters.hn, retry: GENERIC_RETRY, deadline: ctx.discoveryDeadline });
     if (res.skipped) return;
     if (!res.ok || !json) continue;
-    const item = parseHnItem(json);
+    const official = await ctx.http.json({ kind: 'hn', url: hnOfficialItemUrl(story.id), limiter: ctx.limiters.hn, retry: GENERIC_RETRY, deadline: ctx.discoveryDeadline });
+    const kidsOrder = official.res.ok ? parseKidsOrder(official.json) : null;
+    if (!kidsOrder) ctx.log(`[scout] hn item ${story.id}: no kids order from the official API, reply ranks unknown`);
+    const item = parseHnItem(json, kidsOrder);
     if (!item) continue;
     ctx.threads.set(`hn:${story.id}`, {
       source: 'hn',
@@ -107,7 +121,7 @@ export async function scoutHn(ctx: ScoutContext, keywords: string[]): Promise<vo
       for (const link of c.links) {
         const draft = ctx.index.add(
           link.url,
-          { source: 'hn-comment', thread_url: item.story.hnUrl, date: c.date, score: null, rank: c.rank, excerpt: excerptAround(c.text, linkNeedles(link)) },
+          { source: 'hn-comment', thread_url: item.story.hnUrl, date: c.date, score: null, rank: c.rank, excerpt: excerptAround(c.text, linkNeedles(link)), author: c.author },
           { key: `hn-comment:${c.id}`, title: link.text, titlePriority: 1 },
         );
         if (!draft) continue;

@@ -69,3 +69,28 @@ topic: T
     assert.equal(rules.includes(expected), true, `expected ${expected} in ${rules.join(", ")}`);
   }
 });
+
+test("the thin-evidence warning clears once Notes says what was missing", () => {
+  const base = `---
+topic: T
+thin_evidence: true
+---
+# Ledger
+
+| Resource | Type | Score | Endorsements | Freshness | Version | Used in |
+|---|---|---|---|---|---|---|
+
+## Excluded
+
+## Notes
+
+- Structure sources: docs.
+`;
+  const silent = validateLedger(parseLedger(base), "/w/ledger.md").map((f) => f.rule);
+  assert.equal(silent.includes("ledger/thin-evidence"), true);
+  const placeholder = validateLedger(parseLedger(base + "- Thin evidence: not yet scouted.\n"), "/w/ledger.md").map((f) => f.rule);
+  assert.equal(placeholder.includes("ledger/thin-evidence"), true);
+  const said = parseLedger(base + "- Thin evidence: the scout found two threads and no wiki for this topic.\n");
+  assert.deepEqual(said.notes, ["Structure sources: docs.", "Thin evidence: the scout found two threads and no wiki for this topic."]);
+  assert.equal(validateLedger(said, "/w/ledger.md").map((f) => f.rule).includes("ledger/thin-evidence"), false);
+});

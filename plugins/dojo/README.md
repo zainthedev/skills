@@ -13,7 +13,7 @@ Odin-Project-style learning courses for technical topics, generated into a direc
    mkdir ~/learn-rust && cd ~/learn-rust && claude
    ```
 
-3. Run `/dojo-plan Rust` (`$dojo-plan Rust` on Codex). It asks one round of questions: your goal, what you have built before, hours per week and a target date, and how deep the research should go, with a token estimate beside each depth. It then researches for a few minutes and writes `syllabus.md`.
+3. Run `/dojo-plan Rust` (`$dojo-plan Rust` on Codex). It asks one round of questions: your goal, what you have built before, hours per week and a target date, with the token cost of generating each item stated beside them. It then researches for a few minutes and writes `syllabus.md`.
 4. Close the session and read `00-how-this-works.md`. It is the course's rules, including what the AI will and will not do from here on.
 5. `/dojo-next` generates the first lesson. Close the session and go learn. Come back with `/dojo-next` when it is done, `/dojo-coach` when you are stuck, `/dojo-quiz` to test recall, and `/dojo-build` for a browsable site with a done button.
 
@@ -55,7 +55,7 @@ Contributors working on the skills themselves use `scripts/link-skills.sh` at th
 | Command | What it does |
 |---------|--------------|
 | `/dojo-plan <topic> [dir]` | One round of questions, research, then a syllabus in a workspace directory |
-| `/dojo-next [ID]` | Generates the next lesson, project or checkpoint, after asking whether you finished the last one |
+| `/dojo-next [ID]` | Asks which earlier items you finished, then generates the next lesson, project or checkpoint |
 | `/dojo-quiz [ID or section]` | Retrieval practice, graded after each attempt |
 | `/dojo-coach [what you're stuck on]` | Hints and questions up a four-rung ladder; never a solution; makes the session read-only for your files |
 | `/dojo-build [dir]` | Renders the workspace to a local site with a done button and serves it |
@@ -66,13 +66,13 @@ Claude Code also accepts the namespaced form, `/dojo:dojo-plan`; Codex uses `$do
 
 The Odin Project's position is "we do not recommend using AI tools for your learning". The research is narrower: learners with unrestricted AI did better on practice and worse on the unassisted test afterwards, while a tutor that gave hints and withheld answers removed the harm. So `dojo` keeps the AI to three roles. Before you start an item it plans, curates and writes orientation text with citations. During an item, `/dojo-coach` climbs a ladder of questions and pointers with a concrete micro-action each time, and stops before the answer. `/dojo-quiz` grades recall after your attempt. There is no tutor mode.
 
-A coach session is read-only for your files. On Claude Code, invoking the coach registers a tool-level guard for the rest of the session, so it cannot edit files even if asked. On other agents the coach holds the same rule by instruction, and lesson zero tells the learner which applies. Every claim above has a citation in [docs/evidence.md](docs/evidence.md), and every deliberate departure from The Odin Project is an ADR in [docs/adr](docs/adr).
+A coach session is read-only for your files. On Claude Code, invoking the coach registers a tool-level guard for the rest of the session: every tool call passes through it, and only reading tools, one plain call to a read-only dojo script, and an append to the quiz log get through, so it cannot edit files even if asked, through a shell command or an MCP tool included. On other agents the coach holds the same rule by instruction, and lesson zero tells the learner which applies. Every claim above has a citation in [docs/evidence.md](docs/evidence.md), and every deliberate departure from The Odin Project is an ADR in [docs/adr](docs/adr).
 
 ## What a workspace holds
 
 | File | Purpose |
 |------|---------|
-| `profile.md` | Your goal, level, time and depth; the marker that makes a directory a workspace |
+| `profile.md` | Your goal, level and time; the marker that makes a directory a workspace |
 | `syllabus.md` | Sections of lessons, projects and checkpoints, with status. The single record of progress |
 | `00-how-this-works.md` | The rules of the course, including the AI rules |
 | `ledger.md` | Every resource considered, its score, its evidence and where it is used |
@@ -84,9 +84,9 @@ Keep the workspace out of the repository you work in. A directory of its own, or
 
 ## Tokens
 
-Generation costs tokens; learning does not. `dojo-plan` shows an estimate for each depth before you choose, `dojo-next` shows one before it generates, and both report the actual usage of the run afterwards on Claude Code, whose transcript the measure script reads; other agents show their own usage. The estimates live in [skills/dojo/TOKENS.md](skills/dojo/TOKENS.md), with the measured runs they come from. Format is free: the site is rendered from the Markdown by a script, not written by the model.
+Generation costs tokens; learning does not. `dojo-plan` states what each item will cost at your level, `dojo-next` shows the estimate before it generates, and both report the actual usage of the run afterwards on Claude Code, whose transcript the measure script reads; other agents show their own usage. The estimates live in [skills/dojo/TOKENS.md](skills/dojo/TOKENS.md); the runs behind them, and what inflated them, are in [docs/token-runs.md](docs/token-runs.md). Format is free: the site is rendered from the Markdown by a script, not written by the model.
 
-Measured on Opus 5.5, a lesson costs about 210k to 270k weighted tokens whatever its depth, a syllabus 420k to 680k, a project with a starter 360k and a checkpoint 170k, so a six-section course at standard depth is roughly 8M weighted tokens spread over the weeks you take. Most of a lesson's cost is the research pass re-reading its own context, so the pass works from a computed digest of the workspace rather than the files, fetches extracts rather than page summaries, and can run on a cheaper model by setting `research_model` in `profile.md` where the agent allows a subagent to use one ([ADR 0013](docs/adr/0013-research-passes-read-a-digest-fetch-extracts-and-may-run-on-a-cheaper-model.md)). None of this cuts what a lesson contains: every citation is still fetched before it is used.
+Measured on Opus 5.5, a lesson costs about 220k to 330k weighted tokens, a checkpoint 70k, and, as upper bounds from earlier runs, a syllabus 420k and a project with a starter 360k, so a six-section course is roughly 8M weighted tokens spread over the weeks you take. Research depth turned out not to move a lesson's cost, so there is no depth question: every pass has one fixed budget ([ADR 0014](docs/adr/0014-research-budgets-are-fixed-by-item-type-there-is-no-depth-question.md)). Most of a lesson's cost is the research pass re-reading its own context, so the pass works from a computed digest of the workspace rather than the files, fetches extracts rather than page summaries, and can run on a cheaper model by setting `research_model` in `profile.md` where the agent allows a subagent to use one ([ADR 0013](docs/adr/0013-research-passes-read-a-digest-fetch-extracts-and-may-run-on-a-cheaper-model.md)). None of this cuts what a lesson contains: every citation is still fetched before it is used, and on Claude Code a hook records the fetch rather than the pass ([ADR 0015](docs/adr/0015-fetches-are-recorded-by-a-harness-hook-where-one-exists.md)).
 
 ## Writing
 
@@ -109,6 +109,7 @@ skills/dojo-next/
 skills/dojo-quiz/
 skills/dojo-coach/   plus coach-guard.ts, the Claude Code hook
 skills/dojo-build/
+hooks/               hooks.json: the plugin-level WebFetch hook that records fetches
 tests/               node --test suite for the scripts
 evals/               claude plugin eval cases
 docs/                spec, ADRs, evidence

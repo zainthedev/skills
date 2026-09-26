@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildDigest, formatDigest } from "../skills/dojo/scripts/context.ts";
+import { buildDigest, buildQuiz, formatDigest } from "../skills/dojo/scripts/context.ts";
 import { WORKSPACE_FIXTURE, removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
 test("a lesson digest carries the profile, the section, the previous item, the ledger and the scout", () => {
@@ -56,6 +56,58 @@ test("a checkpoint digest lists the sampled lessons' prompts with their answers"
   const text = formatDigest(WORKSPACE_FIXTURE, d);
   assert.match(text, /## Sampled lessons: prompts and answers/);
   assert.match(text, /Answer: /);
+});
+
+test("a checkpoint digest also carries each sampled lesson's anchors and assignment titles", () => {
+  const d = buildDigest(WORKSPACE_FIXTURE, "C01");
+  const first = d.sampled[0];
+  assert.ok(first.anchors.includes("#core-idea"), first.anchors.join(","));
+  assert.ok(first.anchors.includes("#retrieval-practice"));
+  assert.ok(first.assignment.length > 0);
+  assert.match(formatDigest(WORKSPACE_FIXTURE, d), /Anchors for the re-read list: .*#core-idea/);
+});
+
+test("the scout rows carry thread counts, newest mention, excerpt and the single-author flag", () => {
+  const ws = tempWorkspace();
+  try {
+    writeFileSync(
+      join(ws, ".dojo", "scout.json"),
+      JSON.stringify({
+        resources: [
+          { url: "https://a.example/", title: "A", breadth: 3, depth: 5, curated: [], freshness: { last_modified: null }, hn_mentions_24m: 0, objective_score: 8, max_objective: 70, threads: 2, newest_mention: "2026-01-02", excerpt: "use A | it is good", author_only: true },
+        ],
+      }),
+    );
+    const text = formatDigest(ws, buildDigest(ws, "L02"));
+    assert.match(text, /\| Score \| Resource \| Threads \| Newest \| Curated \| Updated \| HN \| Excerpt \|/);
+    assert.match(text, /\[A\]\(https:\/\/a\.example\/\) \(single author\) \| 2 \| 2026-01-02 \| .* \| use A \\\| it is good \|/);
+  } finally {
+    removeDir(ws);
+  }
+});
+
+test("a quiz interleaves capped prompts across the done lessons with answers and sources", () => {
+  const all = buildQuiz(WORKSPACE_FIXTURE, null, 10, 0);
+  assert.equal(all.scope, "every finished lesson");
+  assert.deepEqual(all.lessons, ["L01", "L02"]);
+  assert.ok(all.prompts.length > 2 && all.prompts.length <= 10);
+  assert.equal(all.prompts.length, Math.min(10, all.total));
+  for (let i = 1; i < Math.min(all.prompts.length, all.lessons.length * 2); i++) assert.notEqual(all.prompts[i].lesson, all.prompts[i - 1].lesson);
+  assert.ok(all.prompts.every((p) => p.text && p.answer && /^\.\.\/lessons\/L0\d-.*#retrieval-practice$/.test(p.source)));
+  const capped = buildQuiz(WORKSPACE_FIXTURE, null, 2, 0);
+  assert.equal(capped.prompts.length, 2);
+  // A different day starts each lesson at a different prompt.
+  assert.notEqual(buildQuiz(WORKSPACE_FIXTURE, null, 10, 1).prompts[0].n, all.prompts[0].n);
+  const one = buildQuiz(WORKSPACE_FIXTURE, "l01", 10, 0);
+  assert.deepEqual(one.lessons, ["L01"]);
+  assert.equal(buildQuiz(WORKSPACE_FIXTURE, "1", 10, 0).lessons.length, 2);
+  assert.throws(() => buildQuiz(WORKSPACE_FIXTURE, "L99", 10, 0), /no item L99/);
+  const cli = runScript("context.ts", [WORKSPACE_FIXTURE, "quiz", "--cap", "3"]);
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.match(cli.stdout, /^# Quiz: every finished lesson, 3 of \d+ prompts from L01, L02\n\n1\. \(L0\d prompt \d+\) /);
+  assert.match(cli.stdout, /   Answer: .+\n   Source: \.\.\/lessons\//);
+  const json = runScript("context.ts", ["quiz", "L02", "--json"], WORKSPACE_FIXTURE);
+  assert.deepEqual(JSON.parse(json.stdout).lessons, ["L02"]);
 });
 
 test("the syllabus digest needs no syllabus and uses the wider scout cut", () => {

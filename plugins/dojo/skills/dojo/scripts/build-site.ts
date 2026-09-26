@@ -4,6 +4,7 @@
 // accessible reveal controls filled from the sidecar.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
@@ -13,7 +14,7 @@ import { answerMarkdown, readSidecar, type Sidecar } from "./lib/sidecar.ts";
 import { parseSyllabus, type Syllabus, type SyllabusItem } from "./lib/syllabus.ts";
 import { findItemFile, itemDir, readProfile, requireWorkspace, sidecarPath, type Profile } from "./lib/workspace.ts";
 
-const USAGE = `usage: build-site.ts <workspace> [--out <dir>] [--json]
+const USAGE = `usage: build-site.ts <workspace> [--out <dir>] [--if-exists] [--json]
 
 Writes the site to <workspace>/site (or --out): index.html, how-this-works.html,
 one page per item under lessons/, projects/ and checkpoints/, and assets/.
@@ -21,6 +22,16 @@ Rebuilding overwrites only the files it generated last time.`;
 
 const ASSETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "site");
 const MANIFEST = ".dojo-site.json";
+
+// The site script is written in TypeScript and shipped as plain JavaScript:
+// Node strips the types (node:module, 22.13+), Bun with its transpiler.
+export function stripTypes(source: string): string {
+  const bun = (globalThis as { Bun?: { Transpiler: new (opts: { loader: string }) => { transformSync: (code: string) => string } } }).Bun;
+  if (bun) return new bun.Transpiler({ loader: "ts" }).transformSync(source);
+  // Resolved at call time: Bun's node:module has no stripTypeScriptTypes.
+  const { stripTypeScriptTypes } = createRequire(import.meta.url)("node:module") as { stripTypeScriptTypes: (code: string, opts: { mode: string }) => string };
+  return stripTypeScriptTypes(source, { mode: "strip" });
+}
 
 export interface BuildResult {
   outDir: string;
@@ -177,7 +188,7 @@ function indexPage(site: Site): string {
       const title = page ? `<a href="${page.href}">${escapeHtml(item.title)}</a>` : escapeHtml(item.title);
       parts.push(
         `<tr class="status-${escapeHtml(item.status)}" data-id="${escapeHtml(item.id)}"><td class="item-id">${escapeHtml(item.id)}</td><td>${escapeHtml(item.type)}</td><td>${title}</td>` +
-          `<td>${item.hours === null ? escapeHtml(item.hoursRaw) : item.hours}</td><td>${badge(item.status)}</td><td>${escapeHtml(item.done)}</td><td class="controls">${doneControl(item, Boolean(page))}</td></tr>`,
+          `<td>${item.hours === null ? escapeHtml(item.hoursRaw) : item.hours}</td><td>${badge(item.status)}</td><td>${escapeHtml(item.done)}</td><td class="controls">${page || item.status === "done" ? doneControl(item, Boolean(page)) : `<span class="not-generated">not generated yet</span>`}</td></tr>`,
       );
     }
     parts.push(`</tbody></table></section>`);
@@ -229,7 +240,8 @@ export function buildSite(workspace: string, outDir: string = join(workspace, "s
   for (const asset of ["dojo.css", "dojo.js"]) {
     const path = join(out, "assets", asset);
     mkdirSync(dirname(path), { recursive: true });
-    copyFileSync(join(ASSETS_DIR, asset), path);
+    if (asset === "dojo.js") writeFileSync(path, stripTypes(readFileSync(join(ASSETS_DIR, "dojo.ts"), "utf8")));
+    else copyFileSync(join(ASSETS_DIR, asset), path);
     written.push(`assets/${asset}`);
   }
 
@@ -251,14 +263,20 @@ export function buildSite(workspace: string, outDir: string = join(workspace, "s
 }
 
 async function main(): Promise<number> {
-  const args = parseCli(process.argv.slice(2), { out: { type: "string" } });
+  const args = parseCli(process.argv.slice(2), { out: { type: "string" }, "if-exists": { type: "boolean" } });
   if (args.values.help) {
     console.log(USAGE);
     return 0;
   }
   if (!args.positionals[0]) throw Object.assign(new Error("expected <workspace>"), { code: 2 });
   const workspace = requireWorkspace(args.positionals[0]);
-  const result = buildSite(workspace, typeof args.values.out === "string" ? resolve(args.values.out) : undefined);
+  const outDir = typeof args.values.out === "string" ? resolve(args.values.out) : undefined;
+  // --if-exists lets dojo-next chain a rebuild without first checking for a site.
+  if (args.values["if-exists"] && !existsSync(join(outDir ?? join(workspace, "site"), "index.html"))) {
+    console.log("no site built yet; skipping (run /dojo-build to create one)");
+    return 0;
+  }
+  const result = buildSite(workspace, outDir);
   if (args.values.json) console.log(JSON.stringify(result, null, 2));
   else console.log(`built ${result.files.length} files in ${result.outDir}`);
   return 0;

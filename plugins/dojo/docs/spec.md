@@ -36,7 +36,7 @@ A developer who wants to learn a technology properly has two bad options in Clau
 20. As a learner, I want a browsable site of my course with a sidebar, reveal controls for answers and a done button, so that I can work from the browser.
 21. As a learner, I want to mark an item done from the site and have the syllabus updated, so that there is one record of progress.
 22. As a learner, I want to open the site as plain files if I prefer, so that nothing depends on a server.
-23. As a learner, I want to see an approximate token cost before I choose a depth, so that I can trade research depth for cost knowingly.
+23. As a learner, I want to see an approximate token cost before anything is generated, so that I know what a course costs before I commit.
 24. As a learner, I want the actual token usage reported after a run, so that the estimate stays honest.
 25. As a learner, I want my workspace to be a directory I chose, so that it never lands inside the plugin or my work repo.
 26. As a learner, I want the ledger to show why each resource was chosen and how fresh it is, so that I can judge the curation.
@@ -73,7 +73,7 @@ A developer who wants to learn a technology properly has two bad options in Clau
 
 ### Intake (`plan`)
 
-- One round, grilling-style, defaults shown, skipped for anything given as arguments: goal (becomes the capstone), level as concrete adjacent experience, hours per week and target date, workspace directory, depth with the token estimate beside each option. At most one topic-specific question when the topic forces a fork.
+- One round, grilling-style, defaults shown, skipped for anything given as arguments: goal (becomes the capstone), level as concrete adjacent experience, hours per week and target date, workspace directory, with the token cost per item stated once. At most one topic-specific question when the topic forces a fork.
 - The scout starts in the background the moment the topic is known and runs during intake.
 - On an existing workspace, `plan` asks whether to extend or restart. It never overwrites.
 
@@ -81,7 +81,7 @@ A developer who wants to learn a technology properly has two bad options in Clau
 
 Files the learner sees, all Markdown unless noted:
 
-- `profile.md`: the marker file. Frontmatter holds the machine fields (dojo version, topic, level, depth, hours per week, target date, created). The body holds the goal and prior experience in the learner's words.
+- `profile.md`: the marker file. Frontmatter holds the machine fields (dojo version, topic, level, research model, hours per week, target date, created). The body holds the goal and prior experience in the learner's words.
 - `syllabus.md`: frontmatter (topic, generated date, structure sources); one heading per section; under each a table of items with ID, type, title, estimated hours, status and done date. IDs follow the L01, P01, C01 pattern. Status is planned, generated or done. This is the single source of truth for progress.
 - `00-how-this-works.md`: lesson zero, copied from the plugin with goal and schedule templated in.
 - `ledger.md`: a table of resources with type, rubric score, endorsement evidence, freshness, version checked and which items use it, plus a "thin evidence" note when the scout found little.
@@ -109,7 +109,7 @@ Title; Introduction (what you will build and which sections it reuses); for comp
 
 - Beginners get one completion project before the section's independent project. Intermediate and advanced learners get independent projects only.
 - The capstone is the last project and is derived from the goal.
-- Generation uses the quick depth budget only, to verify named APIs and link their docs.
+- Generation uses the project budget only, to verify named APIs and link their docs.
 
 ### Checkpoint format
 
@@ -122,7 +122,7 @@ Static in the plugin with templated fields only. Covers how the course works, re
 ### Research pipeline
 
 - The syllabus pass and each item pass run in one subagent each, inheriting the session model, with Bash for the scout and curl, WebFetch, WebSearch, Read and Write, a fixed budget, and a line forbidding further delegation. The subagent drafts the item and sidecar and returns a summary. The main session runs the lint and reports.
-- Depth budgets as maximum searches and fetches per item: quick 4 and 6, standard 8 and 12, deep 15 and 25, roughly doubled for the syllabus pass.
+- Budgets as maximum searches and fetches per pass, fixed by item type: lesson 8 and 12, project 4 and 6, syllabus 16 and 24 (ADR 0014).
 - Structure sources, in order: the official docs guide ordering; The Odin Project's course outline when one exists; roadmap.sh; the tables of contents of the top two or three endorsed courses or books. The syllabus names which shaped it.
 - Resources are free only. When The Odin Project covers the topic, its lessons rank as resources like any other.
 - The scout fetches, per topic: Wayback snapshots of two to four subreddit wikis chosen by the model, top-sorted Reddit search feeds and comment feeds at one request per 30 seconds with backoff, comment scores from the Pushshift successor, Hacker News search, Stack Exchange, dev.to and GitHub metadata. It writes compact JSON with per-resource evidence. It never fetches reddit.com HTML.
@@ -131,8 +131,8 @@ Static in the plugin with templated fields only. Covers how the course works, re
 
 ### Token transparency
 
-- A token table in the `dojo` skill: estimated tokens per artifact type (syllabus, lesson, project, checkpoint) per depth and level, tokens not dollars, with the date and model of the measured runs behind it. A maintainer updates it by hand from headless runs; the runner is not part of the repository.
-- `plan` shows the estimate beside each depth option; `next` shows the estimate before generating.
+- A token table in the `dojo` skill: estimated tokens per artifact type (syllabus, lesson, project, checkpoint) per level, tokens not dollars, with the measured runs behind it in `docs/token-runs.md`. A maintainer updates it by hand from headless runs; the runner is not part of the repository.
+- `plan` states the cost per item at the assigned level; `next` shows the estimate before generating.
 - After a run, a bundled measure script sums this session's usage from the transcript since the run started and prints the actual, with a fallback pointer to the built-in per-skill usage report if the transcript is unavailable.
 - A research pass reads a computed digest (`scripts/context.ts`) of the profile, section plan, previous items, ledger and scout instead of the files; every fetch asks for headings plus the passages on the item's concepts, never a summary; `research_model` in the profile can move passes to a cheaper model where the harness allows it (ADR 0013).
 
@@ -161,7 +161,7 @@ Static in the plugin with templated fields only. Covers how the course works, re
 
 - The repository is a marketplace named `zainhill`; the plugin lives under `plugins/dojo` with its manifest, skills, tests, evals and docs. Scripts and templates live inside the `dojo` skill so that skills.sh installs carry them. Claude Code users install the plugin; every other harness installs skill folders through skills.sh, one at a time or all together.
 - SKILL.md files follow the writing-for-agents checklist: key term first, one trigger per distinct case, steps before reference, a done-when test per step, prohibitions paired with the positive instruction, no em dashes.
-- Scripts are TypeScript with no build step and no dependencies: scout, context, wait-for, build-site, serve, mark-done, lint, measure.
+- Scripts are TypeScript with no build step and no dependencies: scout, context, wait-for, fetch-log, build-site, serve, mark-done, lint, measure. The site script is TypeScript too; build-site strips its types.
 - The lesson and project templates are baked from The Odin Project's layout guide as of September 2026 with a provenance note. Their text is never copied.
 
 ## Testing Decisions

@@ -2,7 +2,7 @@
 
 The **ledger** is the workspace's table of vetted resources: what was considered, how it scored, what uses it. Lessons draw assignments and citations from it and from nowhere else.
 
-File: `ledger.md` at the workspace root. The scout's raw signal is `.dojo/scout.json`; every URL fetched in a research pass is appended to `.dojo/fetched.jsonl` as `{"url": "...", "fetched_at": "<ISO timestamp>", "item": "<ID or syllabus>"}`.
+File: `ledger.md` at the workspace root. The scout's raw signal is `.dojo/scout.json`; every URL fetched in a research pass is recorded in `.dojo/fetched.jsonl` as `{"url": "...", "fetched_at": "<ISO timestamp>", "item": "<ID, syllabus or hook>"}`. The pass appends it; the Claude Code plugin's hook writes a second record for every fetch the harness made (ADR 0015).
 
 ## Frontmatter
 
@@ -47,6 +47,6 @@ thin_evidence: false
 - **Used in** lists item IDs, updated whenever an item cites or assigns the resource.
 - Free resources only in the table; paid, dead and stale ones go under Excluded with the reason.
 - Around a dozen rows per course. Prune rather than pile up.
-- When the scout found little, set `thin_evidence: true` and say so under Notes.
+- When the scout found little, set `thin_evidence: true` and add `- Thin evidence: <what it could not find>` under Notes; lint warns until that bullet exists.
 
 Done when every resource a lesson links to has a row with evidence behind its score.

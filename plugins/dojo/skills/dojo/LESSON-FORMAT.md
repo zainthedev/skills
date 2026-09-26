@@ -1,6 +1,6 @@
 # Lesson format
 
-A **lesson** orients the learner on one narrow topic in a few hundred cited words and sends them to curated resources for the depth. Layout baked from The Odin Project's lesson template, September 2026 (ADR 0001); their text is never copied.
+A **lesson** orients the learner on one narrow topic in a few hundred cited words and sends them to curated resources for the rest. Layout baked from The Odin Project's lesson template, September 2026 (ADR 0001); their text is never copied.
 
 File: `lessons/<ID>-<slug>.md`, for example `lessons/L03-middleware.md`. Sidecar beside it: `lessons/L03-middleware.answers.md`.
 

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { request } from "node:http";
 import { join } from "node:path";
 import { isAlive, readPid, startServer } from "../skills/dojo/scripts/serve.ts";
 import { SCRIPTS_DIR, removeDir, runScript, tempWorkspace } from "./helpers.ts";
@@ -42,15 +43,35 @@ test("serves the site, marks items done through /api/done and rebuilds", async (
     const index = await fetch(`${url}index.html`);
     assert.equal(index.status, 200);
     assert.match(index.headers.get("content-type") ?? "", /^text\/html/);
-    assert.match(await index.text(), /data-id="P02" data-status="done">Mark done/);
+    const indexText = await index.text();
+    assert.match(indexText, /data-id="C01" data-status="done">Mark done/);
+    // P02 has no file yet, so it gets no button: one click would make next-item skip it.
+    assert.doesNotMatch(indexText, /done-button" data-id="P02"/);
+    assert.match(indexText, /not generated yet/);
     const css = await fetch(`${url}assets/dojo.css`);
     assert.match(css.headers.get("content-type") ?? "", /^text\/css/);
     assert.equal((await fetch(`${url}nope.html`)).status, 404);
     assert.notEqual((await fetch(`${url}../../etc/passwd`)).status, 200);
 
     const status = await fetch(`${url}api/status`);
-    const items = (await status.json()) as { items: { id: string; status: string }[] };
+    const items = (await status.json()) as { items: { id: string; status: string; path: string }[] };
     assert.equal(items.items.find((it) => it.id === "P02")?.status, "planned");
+    assert.equal(items.items[0].path.startsWith("/"), false, "paths are relative");
+    // Requests from another origin, or with a forged Host, are refused.
+    const crossSite = await fetch(`${url}api/done`, { method: "POST", headers: { origin: "https://evil.example" }, body: JSON.stringify({ id: "P02" }) });
+    assert.equal(crossSite.status, 403);
+    // fetch refuses to set Host, so a raw request carries the forged header.
+    const forgedHost = await new Promise<number>((resolve, reject) => {
+      const req = request(`${url}api/status`, { headers: { host: "evil.example" } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      });
+      req.on("error", reject);
+      req.end();
+    });
+    assert.equal(forgedHost, 403);
+    const sameOrigin = await fetch(`${url}api/status`, { headers: { origin: url.replace(/\/$/, "") } });
+    assert.equal(sameOrigin.status, 200);
 
     const done = await fetch(`${url}api/done`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: "P02" }) });
     assert.equal(done.status, 200);

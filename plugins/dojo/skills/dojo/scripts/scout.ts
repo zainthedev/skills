@@ -6,12 +6,15 @@
 // Usage:
 //   scout.ts <workspace> --topic "<topic>" --subreddits <a,b,c> --keywords "<k1>|<k2>|<k3>"
 //            [--max-threads 12] [--no-reddit] [--budget-seconds 600] [--out <path>]
+//   scout.ts --slug <slug> --topic ... (no workspace yet: writes <tmpdir>/dojo-scout-<slug>.json)
 //
 // Progress goes to stderr; only the final summary goes to stdout. Exit code 0 even when the
-// budget runs out: the file then holds what was gathered and budget.exhausted is true.
+// budget runs out: the file then holds what was gathered and budget.exhausted is true. A crash
+// still writes the file, with an "error" field, and exits 1, so a waiter is never left hanging.
 
-import { mkdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { Http } from './lib/http.ts';
@@ -41,9 +44,13 @@ export interface CliOptions {
 
 const USAGE = `usage: scout.ts <workspace> --topic "<topic>" --subreddits <a,b,c> --keywords "<k1>|<k2>|<k3>"
                 [--max-threads 12] [--no-reddit] [--budget-seconds 600] [--out <path>]
+       scout.ts --slug <slug> --topic "<topic>" ...   (before the workspace exists)
 
 Gathers community endorsement signal for learning resources on the topic and writes
-<workspace>/.dojo/scout.json (or --out). Sources: subreddit wikis via Wayback captures, Reddit
+<workspace>/.dojo/scout.json (or --out). With --slug and no workspace, it writes
+<system temp dir>/dojo-scout-<slug>.json and prints that path first, so dojo-plan can
+start it before init and collect it with wait-for.ts --into. Any file already at the
+output path is removed at the start, so a waiter never picks up a stale run. Sources: subreddit wikis via Wayback captures, Reddit
 search and comment feeds (one request per 30 seconds), comment scores from Arctic Shift, Hacker
 News, Stack Exchange, dev.to, and GitHub metadata for verification. --no-reddit skips the
 reddit.com feeds and Arctic Shift; the wikis still come from the Wayback Machine. Set GITHUB_TOKEN
@@ -63,6 +70,7 @@ export function parseCli(argv: string[]): CliOptions | { error: string } {
         'no-reddit': { type: 'boolean', default: false },
         'budget-seconds': { type: 'string', default: '600' },
         out: { type: 'string' },
+        slug: { type: 'string' },
         help: { type: 'boolean', default: false },
       },
     });
@@ -71,8 +79,9 @@ export function parseCli(argv: string[]): CliOptions | { error: string } {
   }
   const values = parsed.values as Record<string, string | boolean | undefined>;
   if (values.help) return { error: USAGE };
-  const workspace = parsed.positionals[0];
-  if (!workspace) return { error: `missing <workspace>\n${USAGE}` };
+  const slug = typeof values.slug === 'string' ? values.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '';
+  const workspace = parsed.positionals[0] ?? (slug ? tmpdir() : undefined);
+  if (!workspace) return { error: `missing <workspace> (or --slug)\n${USAGE}` };
   const topic = typeof values.topic === 'string' ? values.topic.trim() : '';
   if (!topic) return { error: `missing --topic\n${USAGE}` };
   const keywords = String(values.keywords ?? '')
@@ -90,7 +99,7 @@ export function parseCli(argv: string[]): CliOptions | { error: string } {
   if (!Number.isInteger(maxThreads) || maxThreads < 0) return { error: '--max-threads must be a non-negative integer' };
   const budgetSeconds = Number(values['budget-seconds']);
   if (!Number.isFinite(budgetSeconds) || budgetSeconds <= 0) return { error: '--budget-seconds must be a positive number' };
-  const out = typeof values.out === 'string' && values.out ? resolve(values.out) : resolve(workspace, '.dojo', 'scout.json');
+  const out = typeof values.out === 'string' && values.out ? resolve(values.out) : slug ? join(tmpdir(), `dojo-scout-${slug}.json`) : resolve(workspace, '.dojo', 'scout.json');
   return { workspace: resolve(workspace), topic, subreddits, keywords, maxThreads, reddit, budgetSeconds, out };
 }
 
@@ -102,12 +111,10 @@ function writeAtomically(path: string, text: string): void {
 }
 
 function summarise(out: ScoutOutput, path: string): string {
-  const ok = out.sources.filter((s) => s.status === 'ok').length;
-  const errors = out.sources.filter((s) => s.status === 'error').length;
-  const skipped = out.sources.filter((s) => s.status === 'skipped').length;
+  const { ok, error: errors, skipped } = out.requests;
   const twoPlus = out.resources.filter((r) => r.mentions.length >= 2).length;
   const lines = [
-    `scout "${out.topic}": ${out.resources.length} resources (${twoPlus} with 2+ mentions), ${out.threads.length} threads read, requests ${ok} ok / ${errors} error / ${skipped} skipped, ${out.budget.used_seconds}s of ${out.budget.seconds}s used${out.budget.exhausted ? ' (budget exhausted, partial results)' : ''}, thin_evidence=${out.thin_evidence}`,
+    `scout "${out.topic}": ${out.resources.length} resources kept (${twoPlus} with 2+ mentions, ${out.resources_dropped} single-mention rows with no signal dropped), ${out.threads.length} threads read, requests ${ok} ok / ${errors} error / ${skipped} skipped, ${out.budget.used_seconds}s of ${out.budget.seconds}s used${out.budget.exhausted ? ' (budget exhausted, partial results)' : ''}, thin_evidence=${out.thin_evidence}${out.error ? `, FAILED: ${out.error}` : ''}`,
     `wrote ${path}`,
   ];
   out.resources.slice(0, 5).forEach((r, i) => {
@@ -193,7 +200,32 @@ async function main(): Promise<number> {
   const log = (line: string): void => {
     process.stderr.write(`${line}\n`);
   };
-  const out = await runScout(options, log);
+  if (existsSync(options.out)) {
+    unlinkSync(options.out);
+    log(`[scout] removed the previous ${options.out}`);
+  }
+  process.stdout.write(`writing ${options.out}\n`);
+  let out: ScoutOutput;
+  try {
+    out = await runScout(options, log);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(`[scout] failed: ${message}`);
+    out = assembleOutput({
+      topic: options.topic,
+      subreddits: options.subreddits,
+      keywords: options.keywords,
+      budget: { seconds: options.budgetSeconds, used_seconds: 0, exhausted: false },
+      sources: [],
+      threads: [],
+      drafts: [],
+      nowMs: Date.now(),
+      error: message,
+    });
+    writeAtomically(options.out, formatOutput(out));
+    process.stdout.write(`${summarise(out, options.out)}\n`);
+    return 1;
+  }
   writeAtomically(options.out, formatOutput(out));
   if (out.budget.exhausted) log('[scout] note: the budget ran out before every source was read; results are partial');
   process.stdout.write(`${summarise(out, options.out)}\n`);

@@ -3,29 +3,36 @@
 // as JSON, with the file each one lives at.
 
 import { existsSync, readFileSync } from "node:fs";
+import { relative } from "node:path";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
 import {
   current,
+  findItem,
   lessonsInSection,
   nextPlanned,
   parseSyllabus,
   previousInSection,
   previousSectionNumber,
+  unfinishedBefore,
   syllabusPath,
   type Syllabus,
   type SyllabusItem,
 } from "./lib/syllabus.ts";
 import { itemPath, requireWorkspace, sidecarPath, starterDir } from "./lib/workspace.ts";
 
-const USAGE = `usage: next-item.ts [workspace] [--current] [--all] [--json]
+const USAGE = `usage: next-item.ts [workspace] [--current | --all | --id <ID>] [--json]
 
 Prints the next planned item (default), the current item (--current: the last
-generated item, else the first planned one) or every item (--all) as JSON.
-Each item carries id, type, title, hours, status, done, section, sectionTitle,
-path (the target file), exists, previous (ids before it in its section) and,
-for a checkpoint, samples.section and samples.previousSection (lesson ids).
-Output is JSON whether or not --json is given. The workspace defaults to the
-one found at or above the current directory. Prints null when nothing matches.`;
+generated item, else the first planned one), one item by ID (--id) or every
+item (--all) as one line of JSON. A single item comes as {"workspace", "started", ...item}; --all as
+{"workspace", "items"}. Paths are relative to the workspace. Each item carries
+id, type, title, hours, status, done, section, sectionTitle, path (the target
+file), exists, previous (ids before it in its section), unfinished (ids of
+every earlier item still generated, not done, in any section) and, for a
+checkpoint, samples.section and samples.previousSection (lesson ids).
+"started" is the current UTC time, for the token report. The workspace
+defaults to the one found at or above the current directory. Prints null when
+nothing matches.`;
 
 export interface ItemInfo {
   id: string;
@@ -39,6 +46,7 @@ export interface ItemInfo {
   path: string;
   exists: boolean;
   previous: string[];
+  unfinished: string[];
   sidecar?: string;
   starter?: string;
   samples?: { section: string[]; previousSection: string[] };
@@ -58,6 +66,7 @@ export function describeItem(workspace: string, syllabus: Syllabus, item: Syllab
     path,
     exists: existsSync(path),
     previous: previousInSection(syllabus.items, item),
+    unfinished: unfinishedBefore(syllabus.items, item),
   };
   if (item.type === "lesson") info.sidecar = sidecarPath(path);
   if (item.type === "completion-project") info.starter = starterDir(path);
@@ -71,6 +80,18 @@ export function describeItem(workspace: string, syllabus: Syllabus, item: Syllab
   return info;
 }
 
+// The same item with its paths relative to the workspace, for output.
+export function relativeItem(workspace: string, info: ItemInfo): ItemInfo {
+  const out: ItemInfo = { ...info, path: relative(workspace, info.path) };
+  if (info.sidecar) out.sidecar = relative(workspace, info.sidecar);
+  if (info.starter) out.starter = relative(workspace, info.starter);
+  return out;
+}
+
+function startedNow(): string {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
 export function readSyllabus(workspace: string): Syllabus {
   const path = syllabusPath(workspace);
   if (!existsSync(path)) throw new Error(`no syllabus.md in ${workspace}; run /dojo-plan first`);
@@ -81,6 +102,7 @@ async function main(): Promise<number> {
   const args = parseCli(process.argv.slice(2), {
     current: { type: "boolean" },
     all: { type: "boolean" },
+    id: { type: "string" },
   });
   if (args.values.help) {
     console.log(USAGE);
@@ -89,7 +111,14 @@ async function main(): Promise<number> {
   const workspace = requireWorkspace(args.positionals[0] ?? process.cwd());
   const syllabus = readSyllabus(workspace);
   if (args.values.all) {
-    console.log(JSON.stringify(syllabus.items.map((it) => describeItem(workspace, syllabus, it)), null, 2));
+    console.log(JSON.stringify({ workspace, items: syllabus.items.map((it) => relativeItem(workspace, describeItem(workspace, syllabus, it))) }));
+    return 0;
+  }
+  const wanted = typeof args.values.id === "string" ? args.values.id.trim().toUpperCase() : "";
+  if (wanted !== "") {
+    const chosen = findItem(syllabus.items, wanted);
+    if (!chosen) throw Object.assign(new Error(`no item ${wanted} in the syllabus`), { code: 1 });
+    console.log(JSON.stringify({ workspace, started: startedNow(), ...relativeItem(workspace, describeItem(workspace, syllabus, chosen)) }));
     return 0;
   }
   const item = args.values.current ? current(syllabus.items) : nextPlanned(syllabus.items);
@@ -98,7 +127,7 @@ async function main(): Promise<number> {
     console.log("null");
     return 0;
   }
-  console.log(JSON.stringify(describeItem(workspace, syllabus, item), null, 2));
+  console.log(JSON.stringify({ workspace, started: startedNow(), ...relativeItem(workspace, describeItem(workspace, syllabus, item)) }));
   return 0;
 }
 
