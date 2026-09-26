@@ -32,6 +32,7 @@ test("creates every workspace file from the intake answers", () => {
       slug: "node-and-express",
       level: "intermediate",
       depth: "standard",
+      research_model: "inherit",
       hours_per_week: 6,
       target_date: "2026-12-15",
       created: "2026-09-25",

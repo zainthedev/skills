@@ -9,7 +9,7 @@ generated: 2026-09-25
 
 ## Introduction
 
-Every Express application is a function that receives a request and must send exactly one response. Everything else in the framework, routing, middleware and error handling, is a way of deciding which code runs between those two events. By the end of this lesson you will be able to start a server, define a route that reads a path parameter, and explain what happens when no route matches ([Express guide: Routing](https://expressjs.com/en/guide/routing.html)).
+Every Express application is a function that receives a request and must send exactly one response. Everything else in the framework, routing, middleware and error handling, is a way of deciding which code runs between those two events. The assignment leaves you able to start a server, define a route that reads a path parameter, and explain what happens when no route matches ([Express guide: Routing](https://expressjs.com/en/guide/routing.html)).
 
 ## Lesson overview
 

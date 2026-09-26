@@ -67,6 +67,12 @@ Keep the workspace out of the repository you work in. A directory of its own, or
 
 Generation costs tokens; learning does not. `dojo-plan` shows an estimate for each depth before you choose, `dojo-next` shows one before it generates, and both report the actual usage of the run afterwards on Claude Code, whose transcript the measure script reads; other agents show their own usage. The estimates live in [skills/dojo/TOKENS.md](skills/dojo/TOKENS.md), which a maintainer regenerates from headless runs with the benchmark script. Format is free: the site is rendered from the Markdown by a script, not written by the model.
 
+Most of a lesson's cost is the research pass re-reading its own context, so the pass works from a computed digest of the workspace rather than the files, fetches extracts rather than page summaries, and can run on a cheaper model by setting `research_model` in `profile.md` where the agent allows a subagent to use one ([ADR 0013](docs/adr/0013-research-passes-read-a-digest-fetch-extracts-and-may-run-on-a-cheaper-model.md)). None of this cuts what a lesson contains: every citation is still fetched before it is used.
+
+## Writing
+
+Every sentence a learner reads follows [skills/dojo/STYLE.md](skills/dojo/STYLE.md): no throat-clearing, no AI vocabulary, no adverbs, no "not X but Y", no dashes, no cheering, and a coach that never opens with "great question". The word and phrase half is a lint rule, so a slip is caught without spending tokens ([ADR 0012](docs/adr/0012-one-style-for-every-sentence-inherited-from-stop-slop-and-lint-enforced.md)).
+
 ## Network use
 
 Community endorsement comes from public feeds and APIs, gathered by the scout script once per course: Reddit RSS feeds at one request per 30 seconds, a Pushshift successor for comment scores, Wayback snapshots of subreddit wikis, and the Hacker News, Stack Exchange, dev.to and GitHub APIs. It never scrapes reddit.com HTML. Set `GITHUB_TOKEN` to raise the GitHub rate limit.
@@ -78,7 +84,7 @@ Community endorsement comes from public feeds and APIs, gathered by the scout sc
 ## Layout
 
 ```
-skills/dojo/         formats, rules, TOKENS.md, scripts/, templates/  (the shared root)
+skills/dojo/         formats, STYLE.md, TOKENS.md, scripts/, templates/  (the shared root)
 skills/dojo-plan/    one folder per command, each with agents/openai.yaml for Codex
 skills/dojo-next/
 skills/dojo-quiz/
@@ -98,4 +104,4 @@ docs/                spec, ADRs, evidence
 
 ## License
 
-MIT. The Odin Project's curriculum is CC BY-NC-SA 4.0; `dojo` borrows its structure and philosophy, links to its lessons as resources, and copies none of its text. Where text from Matt Pocock's MIT-licensed skills is reused, his notice travels with it.
+MIT. The Odin Project's curriculum is CC BY-NC-SA 4.0; `dojo` borrows its structure and philosophy, links to its lessons as resources, and copies none of its text. Where text from Matt Pocock's MIT-licensed skills is reused, his notice travels with it. The style rules in `skills/dojo/STYLE.md` and the word lists in `scripts/lib/style.ts` adapt Hardik Pandya's MIT-licensed stop-slop, copyright 2025, extended with the patterns Wikipedia's AI Cleanup project tracks.

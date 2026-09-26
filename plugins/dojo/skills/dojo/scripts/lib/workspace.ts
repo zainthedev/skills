@@ -21,6 +21,8 @@ export interface Profile {
   slug: string;
   level: string;
   depth: string;
+  // Model for research passes: "inherit" or a harness model name.
+  researchModel: string;
   hoursPerWeek: number | null;
   targetDate: string;
   created: string;
@@ -153,6 +155,7 @@ export function readProfile(workspace: string): Profile {
     slug: asString(data.slug),
     level: asString(data.level),
     depth: asString(data.depth),
+    researchModel: asString(data.research_model) || "inherit",
     hoursPerWeek: typeof hours === "number" ? hours : Number(hours) || null,
     targetDate: asString(data.target_date),
     created: asString(data.created),

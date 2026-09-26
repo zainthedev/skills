@@ -46,7 +46,7 @@ Wait for the scout to finish; it takes a few minutes and the syllabus pass needs
 
 ### 4. Syllabus pass
 
-Run one research pass with the brief from RESEARCH.md, the syllabus variant, at double the budget for the chosen depth. Give it to a subagent where your harness can spawn one; otherwise do it yourself in this session under the same budget. Wait for the report. Then:
+Run one research pass with the brief from RESEARCH.md, the syllabus variant, at double the budget for the chosen depth. Give it to a subagent where your harness can spawn one, on the model `research_model` in `profile.md` names when the harness allows a choice; otherwise do it yourself in this session under the same budget. Wait for the report. Then:
 
 ```bash
 node <dojo root>/scripts/lint.ts <dir>

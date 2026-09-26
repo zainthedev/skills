@@ -23,6 +23,7 @@ import { canonicalUrl, findRow, ledgerHas, parseLedger, readFetched, validateLed
 import { headingAnchors } from "./lib/markdown.ts";
 import { fenceCount, findSection, firstContentLine, isBlank, listItems, splitDoc, urlsIn, wordCount, type Doc, type ListItem, type Section } from "./lib/sections.ts";
 import { readSidecar } from "./lib/sidecar.ts";
+import { checkStyle } from "./lib/style.ts";
 import { findItem, parseSyllabus, previousSectionNumber, validateSyllabus, type Syllabus, type SyllabusItem } from "./lib/syllabus.ts";
 import { findItemFile, idFromPath, itemPath, readProfile, requireWorkspace, sidecarPath, starterDir, type Profile } from "./lib/workspace.ts";
 
@@ -56,6 +57,19 @@ const VAGUE_LINK_TEXT = new Set(["this", "here", "video", "docs", "link", "the d
 
 function report(ctx: Context, severity: Severity, file: string, line: number, rule: string, message: string): void {
   ctx.findings.push(finding(severity, file, line, rule, message));
+}
+
+// The style/* rules from STYLE.md's mechanical half, on authored prose.
+function checkStyleLines(ctx: Context, file: string, lines: string[], startLine: number): void {
+  for (const f of checkStyle(lines, startLine)) report(ctx, f.severity, file, f.line, f.rule, f.message);
+}
+
+function checkStyleSections(ctx: Context, file: string, sections: (Section | null)[]): void {
+  for (const s of sections) if (s) checkStyleLines(ctx, file, s.lines, s.startLine);
+}
+
+function checkStyleItems(ctx: Context, file: string, items: ListItem[]): void {
+  for (const it of items) checkStyleLines(ctx, file, [it.text, ...it.continuation], it.line);
 }
 
 function checkHeadings(ctx: Context, file: string, doc: Doc, order: string[], required: string[], rule: string): void {
@@ -255,6 +269,7 @@ function lintLesson(ctx: Context, file: string, doc: Doc, item: SyllabusItem): v
   } else {
     report(ctx, "warning", file, 1, "lesson/budget", `cannot check the word budget: profile.md level is not one of ${LEVELS.join(", ")} (${words} authored words)`);
   }
+  checkStyleSections(ctx, file, [intro, overview, core, assignment, additional]);
 
   const cited = [intro, core].filter((s): s is Section => s !== null).flatMap((s) => urlsIn(s.lines, s.startLine));
   let unverified = 0;
@@ -282,6 +297,7 @@ function lintLesson(ctx: Context, file: string, doc: Doc, item: SyllabusItem): v
         report(ctx, "warning", sidecarFile, answer.line, "lesson/sidecar-source", "answer has no Source: link");
       }
     }
+    checkStyleItems(ctx, sidecarFile, [...sidecar.prediction, ...sidecar.retrieval]);
   }
 }
 
@@ -378,6 +394,7 @@ function lintProject(ctx: Context, file: string, doc: Doc, item: SyllabusItem): 
       if (it.checked === null) report(ctx, "error", file, it.line, "project/done-when", "each Done when item is a task list item: - [ ] ...");
     }
   }
+  checkStyleSections(ctx, file, [intro, starter, assignment, findSection(doc, "Extra credit"), done]);
 }
 
 function lintCheckpoint(ctx: Context, file: string, doc: Doc, item: SyllabusItem): void {
@@ -478,6 +495,8 @@ function lintCheckpoint(ctx: Context, file: string, doc: Doc, item: SyllabusItem
       if (!mentioned.has(id)) report(ctx, "warning", file, below.line, "checkpoint/reread", `no re-read pointer for ${id}; name one place per sampled lesson`);
     }
   }
+  checkStyleLines(ctx, file, doc.preamble, doc.preambleLine);
+  if (below) checkStyleSections(ctx, file, [below]);
 }
 
 function lintItem(ctx: Context, item: SyllabusItem): void {
@@ -537,6 +556,9 @@ export function lintWorkspace(workspace: string, ids: string[] = []): LintResult
       }),
     );
     if (existsSync(ledgerFile)) findings.push(...validateLedger(ledger, ledgerFile, new Set(syllabus.items.map((it) => it.id))));
+    const syllabusDoc = splitDoc(readFileSync(syllabusFile, "utf8"));
+    checkStyleLines(ctx, syllabusFile, syllabusDoc.preamble, syllabusDoc.preambleLine);
+    for (const s of syllabusDoc.sections) checkStyleLines(ctx, syllabusFile, s.lines.map((l) => (/^\s*\|/.test(l) ? "" : l)), s.startLine);
     for (const item of syllabus.items) {
       if ((item.status === "generated" || item.status === "done") && ID_PATTERN.test(item.id)) lintItem(ctx, item);
     }

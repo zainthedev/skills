@@ -85,6 +85,7 @@ export function initWorkspace(opts: InitOptions): InitResult {
         slug,
         level: opts.level,
         depth: opts.depth,
+        research_model: "inherit",
         hours_per_week: opts.hours,
         target_date: opts.target,
         created,

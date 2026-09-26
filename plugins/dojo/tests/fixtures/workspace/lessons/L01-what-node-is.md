@@ -9,7 +9,7 @@ generated: 2026-09-15
 
 ## Introduction
 
-Node runs JavaScript outside the browser, which is what lets you write servers and command line tools in the language you already know from the front end ([Introduction to Node.js](https://nodejs.org/en/learn/getting-started/introduction-to-nodejs)). By the end of this lesson you will be able to say what Node adds to the language and run a script from the terminal.
+Node runs JavaScript outside the browser, which is what lets you write servers and command line tools in the language you already know from the front end ([Introduction to Node.js](https://nodejs.org/en/learn/getting-started/introduction-to-nodejs)). The assignment leaves you able to say what Node adds to the language and run a script from the terminal.
 
 ## Lesson overview
 

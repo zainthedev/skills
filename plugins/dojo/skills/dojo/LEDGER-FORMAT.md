@@ -1,8 +1,8 @@
 # Ledger format
 
-The **ledger** is the workspace's table of vetted resources: what was considered, how it scored, and what uses it. Lessons draw assignments and citations from it and from nowhere else.
+The **ledger** is the workspace's table of vetted resources: what was considered, how it scored, what uses it. Lessons draw assignments and citations from it and from nowhere else.
 
-File: `ledger.md` at the workspace root. The scout's raw signal lives beside it in `.dojo/scout.json`; every URL fetched during a research pass is appended to `.dojo/fetched.jsonl` as one JSON object per line: `{"url": "...", "fetched_at": "<ISO timestamp>", "item": "<ID or syllabus>"}`.
+File: `ledger.md` at the workspace root. The scout's raw signal is `.dojo/scout.json`; every URL fetched in a research pass is appended to `.dojo/fetched.jsonl` as `{"url": "...", "fetched_at": "<ISO timestamp>", "item": "<ID or syllabus>"}`.
 
 ## Frontmatter
 
@@ -15,7 +15,7 @@ thin_evidence: false
 ---
 ```
 
-`scouted` is `pending` in a freshly initialised workspace until the syllabus pass fills the table.
+`scouted` is `pending` until the syllabus pass fills the table.
 
 ## Body
 
@@ -39,14 +39,14 @@ thin_evidence: false
 
 ## Rules
 
-- **Resource** is `[Title](url)` with the canonical URL, no tracking parameters.
-- **Type** is one of `docs`, `guide`, `course`, `book`, `video`, `interactive`, `article`, `reference`.
-- **Score** is the rubric total, 0 to 100, from RUBRIC.md.
-- **Endorsements** is a short evidence string a reader can check: where it was recommended and how strongly.
-- **Freshness** is `YYYY-MM` of the last verified update, or `unknown`. **Version** is the tool version the resource targets, or `-`.
+- **Resource** is `[Title](url)`, canonical URL, no tracking parameters.
+- **Type** is `docs`, `guide`, `course`, `book`, `video`, `interactive`, `article` or `reference`.
+- **Score** is the rubric total, 0 to 100 (RUBRIC.md).
+- **Endorsements** is evidence a reader can check: where it was recommended and how strongly.
+- **Freshness** is `YYYY-MM` of the last verified update, or `unknown`. **Version** is the tool version targeted, or `-`.
 - **Used in** lists item IDs, updated whenever an item cites or assigns the resource.
-- Free resources only in the table. Paid, dead and stale resources go under Excluded with the reason.
+- Free resources only in the table; paid, dead and stale ones go under Excluded with the reason.
 - Around a dozen rows per course. Prune rather than pile up.
 - When the scout found little, set `thin_evidence: true` and say so under Notes.
 
-Done when every resource a lesson links to has a row, and every row's score has evidence behind it.
+Done when every resource a lesson links to has a row with evidence behind its score.

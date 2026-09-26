@@ -25,7 +25,8 @@ Read the format for the thing you are producing, and only that:
 - Profile: [PROFILE-FORMAT.md](PROFILE-FORMAT.md)
 - Research passes, depth budgets, the scout and the research brief: [RESEARCH.md](RESEARCH.md)
 - Scoring a resource: [RUBRIC.md](RUBRIC.md)
+- How every sentence for the learner is written: [STYLE.md](STYLE.md)
 - Token estimates per item type and depth: [TOKENS.md](TOKENS.md)
 - What the AI may do during learning: [AI-RULES.md](AI-RULES.md)
 
-Every generated file is checked by `scripts/lint.ts`. A file that fails lint is not done.
+`scripts/context.ts <workspace> <ID>` prints the digest a pass works from instead of reading the workspace files. Every generated file is checked by `scripts/lint.ts`, style rules included. A file that fails lint is not done.

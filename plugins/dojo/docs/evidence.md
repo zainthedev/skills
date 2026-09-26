@@ -252,7 +252,23 @@ Dry-run shortlist head, as an example of what evidence looks like: Express offic
 - Keyword-tally false positives: a "the docs" regex, unquoted HN queries, "Odin" matching sidebar links in a capture. Read the quoted comment before counting it.
 - Comment-count bias: launch and rant threads have the most comments and the least information; 4-comment threads carried the clearest recommendations.
 
-## 5. Citations
+## 5. Token efficiency and writing style
+
+### 5.1 Where the tokens go, and what the sources say
+
+- dojo's provisional table puts a standard lesson at 60k fresh input, 1.0M cache reads and 8k output: the research pass re-reading its own context dominates, so the size of what enters that context is the lever (ADR 0013).
+- Betterclaw's "skills that reduce token usage" names five patterns. Pattern 3, scripts over Markdown instructions, matches dojo's design: the scout, lint, next-item, mark-done, build-site, measure and context are scripts. Its "up to 90%" figure is unsourced. Pattern 5, a condensed context summary sent instead of raw files, is adopted as a computed digest rather than a hand-written one, because a hand-written summary drifts from the files.
+- Google Cloud's eleven principles for token-efficient engineering: skills from the start, scripts and CLI tools, delegating output-heavy work to subagents, planning in one session and executing in clean ones, hard stop conditions on loops, and a new session per topic all describe ADR 0008 and the "close the session and go learn" rule. Principle 1, start with a cheaper model and scale up on failure, became the `research_model` profile field.
+- SkillReducer (Gao et al., 2026) studied 55,315 public skills: 26.4% lack a routing description, only 38.5% of body text is actionable core rules, and reference files can inject tens of thousands of tokens. Its two-stage compression cut descriptions 48% and bodies 39% while task quality rose 2.8%, a less-is-more effect, with 0.965 mean retention across five models. dojo's skills were already tiered (a router plus on-demand format files) so the format files were trimmed, not restructured. The paper's conclusion names skill obsolescence, skills that stop triggering as models change, as the larger ecosystem problem, which is the case for re-running the evals when the model changes.
+
+### 5.2 AI writing tells
+
+- Hardik Pandya's stop-slop (MIT, 2025) is the base rule set: throat-clearing openers, emphasis crutches, business jargon, adverbs, meta-commentary, vague declaratives; binary contrasts, negative listing, dramatic fragmentation, rhetorical setups, false agency, narrator-from-a-distance, passive voice; a 1 to 10 score on directness, rhythm, trust, authenticity and density.
+- Wikipedia's "Signs of AI writing" (WikiProject AI Cleanup, revised through 2026) adds what that list predates and dates the vocabulary by era: 2023 to mid-2024 "delve, tapestry, testament, intricate, pivotal, landscape"; mid-2024 to mid-2025 "align with, bolstered, fostering, showcasing, vibrant"; mid-2025 onward a smaller set, "emphasizing, enhance, highlighting, showcasing". Structural signs: negative parallelisms ("not only X but also Y", "not X, but Y"), the rule of three, canned significance ("stands as a testament", "plays a crucial role"), vague attribution ("experts argue", "industry reports"), outline-like conclusions ("despite these challenges"); formatting signs: bold overuse, title-case headings, headings holding only headings, emoji as formatting, em dashes, thematic breaks, curly quotes, tracking parameters in URLs. It also lists knowledge-cutoff disclaimers and collaborative asides as tells.
+- dojo's additions for teaching and coaching prose, from the two sources above and from what tutorials and chat replies do: "in this lesson we will", "let's dive in", "by the end of this lesson", "congratulations", "pro tip", "key takeaways", "happy coding"; "great question", "you're absolutely right", "I hope this helps", apology and praise before content.
+- Split: judgement rules in `skills/dojo/STYLE.md`, word and phrase lists in `scripts/lib/style.ts` as lint rules (ADR 0012).
+
+## 6. Citations
 
 Format: author (year). Venue. Title. URL. Undated web pages are marked "accessed 2026-09-25". Entries are copied from the source notes without alteration; two entries whose authors the notes did not capture are marked as such.
 
@@ -424,3 +440,12 @@ Format: author (year). Venue. Title. URL. Undated web pages are marked "accessed
 - Express (accessed 2026-09-25). expressjs.com. Getting started: Installing. https://expressjs.com/en/starter/installing.html
 - University of Helsinki (accessed 2026-09-25). fullstackopen.com. Full Stack Open, Part 3: Programming a server with Node.js and Express. https://fullstackopen.com/en/part3
 - MDN (accessed 2026-09-25). developer.mozilla.org. Express web framework (Node.js/JavaScript). https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/Express_Nodejs
+
+### Token efficiency and writing style
+
+- Betterclaw (2026). Skills that reduce token usage. https://www.betterclaw.io/blog/skills-that-reduce-token-usage
+- Google Cloud (2026). A guide to AI tokenomics: eleven principles for token-efficient software engineering. https://cloud.google.com/blog/topics/developers-practitioners/guide-to-ai-tokenomics-eleven-principles-for-token-efficient-software-engineering
+- Gao, Y., Li, Z., Yuan, Y., Ji, Z., Ma, P., Wang, S. (2026). SkillReducer: Optimizing LLM Agent Skills for Token Efficiency. arXiv:2603.29919. https://arxiv.org/html/2603.29919v1
+- Pandya, H. (2025). stop-slop: a skill file for removing AI tells from prose. MIT. https://github.com/hardikpandya/stop-slop
+- Wikipedia (accessed 2026-09-26). Wikipedia:Signs of AI writing. https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
+- Wikipedia (accessed 2026-09-26). Wikipedia:WikiProject AI Cleanup. https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup

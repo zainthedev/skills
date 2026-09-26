@@ -1,0 +1,19 @@
+---
+status: accepted
+---
+# Research passes read a digest, fetch extracts, and may run on a cheaper model
+
+Half of a lesson's weighted token cost is the research pass re-reading its own context on every turn, so what enters that context is the lever. Three changes, none of which touch what a lesson contains. First, the pass works from `scripts/context.ts`, a deterministic digest of the profile, the section plan, the previous items' overviews and prompts, the ledger and the scout's top resources for the item, instead of reading the profile, the syllabus, the ledger, the whole scout file and the previous items in full. A checkpoint's digest carries the sampled prompts with their answers, so `dojo-next` writes it without opening a lesson. Second, every fetch asks for two extracts, the page's headings with its date, version and any paywall, then the passages on the item's concepts, rather than a summary; the rubric needs the first and the citations need the second, and nothing else needs to sit in context afterwards. Third, `research_model` in the profile names a model for research passes, default `inherit`, for harnesses that let a subagent run a different model. The format files were also trimmed of rationale that the ADRs already hold.
+
+## Considered options
+
+- **A hand-maintained context summary**, the pattern the "skills that reduce token usage" article recommends. Rejected: it rots the moment the workspace moves; a computed digest cannot drift from the files.
+- **Cutting fetch budgets.** Rejected: fetch-before-cite is where lesson quality lives, and a claim that cannot be verified is the one saving that would show up in the lessons.
+- **Compressing the skill files further**, per SkillReducer's finding that most skill text is background. Done as a trim, not a rewrite: the skills were already tiered, and the saving is a few hundred tokens per run against a million cache reads in the pass.
+
+## Consequences
+
+- The brief's reading list is three files and one command.
+- Serendipity is preserved by the headings part of the fetch prompt, and a second fetch of a page is allowed when the headings show something worth reading.
+- On harnesses whose fetch tool returns raw pages, the extract shape becomes an instruction to note the same two parts and stop quoting.
+- The token table's ratios stand; its absolute values still await the benchmark.

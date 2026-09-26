@@ -1,6 +1,6 @@
 # Project format
 
-A **project** is a build the learner completes without a walkthrough, specified as requirements. It deliberately reuses earlier sections. The layout is baked from The Odin Project's project template as of September 2026; their text is never copied.
+A **project** is a build the learner completes without a walkthrough, specified as requirements, reusing earlier sections. Layout baked from The Odin Project's project template, September 2026; their text is never copied.
 
 File: `projects/<ID>-<slug>.md`, for example `projects/P02-todo-api.md`. A **completion project** also has `projects/P02-todo-api/starter/`.
 
@@ -28,9 +28,9 @@ generated: 2026-09-25
 
 `# Project: <title>` then:
 
-1. `## Introduction`: what the learner will build, and which earlier lessons it reuses, named.
-2. `## Starter`: completion projects only. What `starter/` contains, how to run it, and where the gaps are. Every gap in the starter is marked with a `TODO(dojo): <what to do>` comment. The starter runs, or fails clearly at a gap.
-3. `## Assignment`: an ordered list of requirements or user stories, each checkable.
+1. `## Introduction`: what the learner will build and which earlier lessons it reuses, named. The capstone's restates the goal from `profile.md` in one sentence.
+2. `## Starter`: completion projects only. What `starter/` contains, how to run it, where the gaps are. Every gap is marked `TODO(dojo): <what to do>` in the code. The starter runs, or fails clearly at a gap.
+3. `## Assignment`: an ordered list of requirements or user stories, each checkable, naming behaviour rather than implementation.
 4. `## Extra credit`: optional bullets.
 5. `## Rules`: this fixed block, verbatim:
 
@@ -43,8 +43,7 @@ generated: 2026-09-25
 
 ## Rules
 
-- Requirements name behaviour, not implementation.
-- Every API named in the requirements is verified against its docs during the quick research pass, and those docs appear in the ledger.
-- The capstone's Introduction restates the goal from `profile.md` in one sentence.
+- Every API named in the requirements is verified against its docs during the quick research pass, and those docs are in the ledger.
+- Every authored sentence follows STYLE.md.
 
 Done when the project file exists, the starter exists and runs when the kind is completion, and `lint` passes.

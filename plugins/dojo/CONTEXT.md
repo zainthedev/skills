@@ -155,6 +155,14 @@ _Avoid_: web pages, website, export
 **Token estimate**:
 The pre-flight number shown before generation, read from the benchmark table for the chosen depth and level.
 
+**Digest**:
+The computed block a research pass works from, printed by the context script for one item: profile, section plan, previous items' overviews and prompts, ledger, and the scout's top resources. Replaces reading the workspace files.
+_Avoid_: summary (implies model-written), context (the harness's window)
+
+**Style rules**:
+The rules every learner-facing sentence follows, in STYLE.md, with a mechanical half lint enforces as `style/*`.
+_Avoid_: tone guide, voice, slop filter
+
 ## Relationships
 
 - A **Workspace** holds one **Syllabus**, one **Ledger**, one **Lesson zero** and the **Learner**'s profile.
