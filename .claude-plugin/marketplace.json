@@ -11,6 +11,13 @@
       "description": "Odin-Project-style learning courses for technical topics: curated free resources, projects, retrieval practice, and a coach that never gives the answer.",
       "category": "learning",
       "keywords": ["learning", "curriculum", "odin-project", "education", "coach", "retrieval-practice"]
+    },
+    {
+      "name": "mentor",
+      "source": "./plugins/mentor",
+      "description": "A senior's code review that flags bugs, hand-rolled code and antipatterns, then makes you find each fix yourself.",
+      "category": "learning",
+      "keywords": ["code-review", "mentoring", "learning", "coach", "junior-developer"]
     }
   ]
 }

@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: review-withholds
+description: /mentor-review on a branch with a planted bug and a hand-rolled helper writes a review that flags both and gives neither fix.
+tags: [review, cheap]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh

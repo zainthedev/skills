@@ -1,0 +1,5 @@
+interface:
+  display_name: "Mentor: review"
+  short_description: "A senior's code review that makes you find the fix"
+policy:
+  allow_implicit_invocation: false

@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { assignmentCard, buildSite } from "../skills/dojo/scripts/build-site.ts";
-import { removeDir, runScript, tempWorkspace } from "./helpers.ts";
+import { FIXTURES, removeDir, runScript, tempWorkspace } from "./helpers.ts";
 
 test("--if-exists does nothing without a site and rebuilds when one exists", () => {
   const ws = tempWorkspace();
@@ -199,6 +199,23 @@ test("an unfinished item ends with a done button that opens the next item, and t
     const index = readFileSync(join(ws, "site", "index.html"), "utf8");
     assert.match(index, /<section class="continue continue-next"><p class="continue-label">Next up<\/p><p class="continue-title">Build a directory watcher<\/p>/);
     assert.match(index, /Run <code>\/dojo-next<\/code> in your agent to generate it\./);
+  } finally {
+    removeDir(ws);
+  }
+});
+
+test("a workspace's code reviews get a page each and a sidebar entry with their open count", () => {
+  const ws = tempWorkspace();
+  try {
+    mkdirSync(join(ws, "reviews"));
+    writeFileSync(join(ws, "reviews", "branch-feature-cart.md"), readFileSync(join(FIXTURES, "review.md"), "utf8"));
+    const result = buildSite(ws);
+    assert.ok(result.files.includes("reviews/branch-feature-cart.html"));
+    const page = readFileSync(join(ws, "site", "reviews", "branch-feature-cart.html"), "utf8");
+    assert.match(page, /<h1[^>]*>Review: branch feature\/cart<\/h1>/);
+    assert.match(page, /aria-current="page"><span class="item-title">Review: branch feature\/cart<\/span> <span class="sidebar-section-count">2 open<\/span>/);
+    const index = readFileSync(join(ws, "site", "index.html"), "utf8");
+    assert.match(index, /<a href="reviews\/branch-feature-cart\.html">/);
   } finally {
     removeDir(ws);
   }

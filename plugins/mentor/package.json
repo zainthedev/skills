@@ -1,0 +1,12 @@
+{
+  "name": "mentor",
+  "private": true,
+  "type": "module",
+  "description": "Scripts bundled with the mentor Claude Code plugin. No dependencies; run natively on Node 24 or Bun.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test \"tests/*.test.ts\""
+  }
+}

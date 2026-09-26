@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Renders a workspace to a static site: an index with per-section tables,
-// one page per item, lesson zero, and the shared assets. Lesson pages get
+// one page per item, lesson zero, one page per code review, and the shared assets. Lesson pages get
 // accessible reveal controls filled from the sidecar.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { isMain, parseCli, runCli } from "./lib/cli.ts";
 import { asString } from "./lib/frontmatter.ts";
 import { escapeHtml, renderMarkdown, type ListItemInfo } from "./lib/markdown.ts";
+import { readReviews } from "./lib/review.ts";
 import { answerMarkdown, readSidecar, type Sidecar } from "./lib/sidecar.ts";
 import { parseSyllabus, type Syllabus, type SyllabusItem } from "./lib/syllabus.ts";
 import { findItemFile, itemDir, readProfile, requireWorkspace, sidecarPath, type Profile } from "./lib/workspace.ts";
@@ -17,7 +18,8 @@ import { findItemFile, itemDir, readProfile, requireWorkspace, sidecarPath, type
 const USAGE = `usage: build-site.ts <workspace> [--out <dir>] [--if-exists] [--json]
 
 Writes the site to <workspace>/site (or --out): index.html, how-this-works.html,
-one page per item under lessons/, projects/ and checkpoints/, and assets/.
+one page per item under lessons/, projects/ and checkpoints/, one per review
+under reviews/, and assets/.
 Rebuilding overwrites only the files it generated last time.`;
 
 const ASSETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "site");
@@ -46,8 +48,16 @@ interface Page {
   source: string;
 }
 
+interface ReviewPage {
+  href: string;
+  title: string;
+  open: number;
+  source: string;
+}
+
 interface Site {
   workspace: string;
+  reviews: ReviewPage[];
   syllabus: Syllabus;
   profile: Profile | null;
   courseTitle: string;
@@ -134,6 +144,16 @@ function sidebar(site: Site, currentHref: string | null, root: string): string {
   parts.push(`<p class="sidebar-progress">${done} of ${total} done</p>`);
   parts.push(progressBar(done, total));
   parts.push(`<ul class="sidebar-top"><li><a href="${root}how-this-works.html"${currentHref === "how-this-works.html" ? ' aria-current="page"' : ""}>How this course works</a></li></ul>`);
+  if (site.reviews.length > 0) {
+    const open = currentHref?.startsWith("reviews/") ? " open" : "";
+    parts.push(`<details class="sidebar-section"${open}><summary><span class="sidebar-section-title">Code reviews</span></summary><ul class="sidebar-items">`);
+    for (const review of site.reviews) {
+      const current = review.href === currentHref;
+      const count = review.open > 0 ? ` <span class="sidebar-section-count">${review.open} open</span>` : "";
+      parts.push(`<li${current ? ' class="is-current"' : ""}><a href="${root}${review.href}"${current ? ' aria-current="page"' : ""}><span class="item-title">${escapeHtml(review.title)}</span>${count}</a></li>`);
+    }
+    parts.push(`</ul></details>`);
+  }
   for (const section of site.syllabus.sections) {
     const items = site.syllabus.items.filter((it) => it.section === section.number);
     const sectionDone = items.filter((it) => it.status === "done").length;
@@ -272,6 +292,11 @@ function indexPage(site: Site): string {
   return layout(site, "Syllabus", "index.html", parts.join("\n"));
 }
 
+function reviewPage(site: Site, review: ReviewPage): string {
+  const body = renderMarkdown(readFileSync(review.source, "utf8"), { linkRewrite: rewriteLink });
+  return layout(site, review.title, review.href, `<article class="item-body item-review">\n${body}\n</article>`);
+}
+
 function howThisWorksPage(site: Site, source: string): string {
   const body = renderMarkdown(readFileSync(source, "utf8"), { linkRewrite: rewriteLink });
   return layout(site, "How this course works", "how-this-works.html", `<article class="item-body">\n${body}\n</article>`);
@@ -298,7 +323,11 @@ export function buildSite(workspace: string, outDir: string = join(workspace, "s
     pages.push(page);
     pageByItem.set(item.id, page);
   }
-  const site: Site = { workspace, syllabus, profile, courseTitle, pages, pageByItem };
+  const reviews: ReviewPage[] = readReviews(join(workspace, "reviews")).map((r) => {
+    const heading = /^#\s+(.+)$/m.exec(readFileSync(r.path, "utf8"))?.[1] ?? r.name.replace(/\.md$/, "");
+    return { href: `reviews/${r.name.replace(/\.md$/, ".html")}`, title: heading, open: r.review.flags.filter((f) => f.status === "open").length, source: r.path };
+  });
+  const site: Site = { workspace, reviews, syllabus, profile, courseTitle, pages, pageByItem };
 
   const out = resolve(outDir);
   const written: string[] = [];
@@ -313,6 +342,7 @@ export function buildSite(workspace: string, outDir: string = join(workspace, "s
   const lessonZero = join(workspace, "00-how-this-works.md");
   if (existsSync(lessonZero)) write("how-this-works.html", howThisWorksPage(site, lessonZero));
   pages.forEach((page, index) => write(page.href, itemPage(site, page, index)));
+  for (const review of reviews) write(review.href, reviewPage(site, review));
   for (const asset of ["dojo.css", "dojo.js"]) {
     const path = join(out, "assets", asset);
     mkdirSync(dirname(path), { recursive: true });

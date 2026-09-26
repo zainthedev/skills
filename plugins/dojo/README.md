@@ -60,13 +60,15 @@ Contributors working on the skills themselves use `scripts/link-skills.sh` at th
 | `/dojo-coach [what you're stuck on]` | Hints and questions up a four-rung ladder; never a solution; makes the session read-only for your files |
 | `/dojo-build [dir]` | Starts the course's local site again, for example after a restart; `/dojo-plan` starts it the first time |
 
+For a senior's review of your project code, the separate [mentor](../mentor) plugin's `/mentor-review` works inside a workspace: it checks the project's requirements, never gives an answer there, and the site lists its reviews.
+
 This page writes the short form. On Claude Code the documented form for a plugin command is namespaced, `/dojo:dojo-plan`; Codex uses `$dojo-plan`. A sixth skill, `dojo`, is not a command: it holds the formats, rules, scripts and token table the five share, and the agent loads it on its own when a directory holds a dojo `profile.md`.
 
 ## What it refuses to do, and why
 
 The Odin Project's position is "we do not recommend using AI tools for your learning". The research is narrower: learners with unrestricted AI did better on practice and worse on the unassisted test afterwards, while a tutor that gave hints and withheld answers removed the harm. So `dojo` keeps the AI to three roles. Before you start an item it plans, curates and writes orientation text with citations. During an item, `/dojo-coach` climbs a ladder of questions and pointers with a concrete micro-action each time, and stops before the answer. `/dojo-quiz` grades recall after your attempt. There is no tutor mode.
 
-A coach session is read-only for your files. On Claude Code, invoking the coach registers a tool-level guard for the rest of the session: every tool call passes through it, and only reading tools, one plain call to a read-only dojo script, and an append to the quiz log get through, so it cannot edit files even when asked, whether through an edit tool, a shell command or an MCP tool. On other agents the coach holds the same rule by instruction, and lesson zero tells the learner which applies. Every claim above has a citation in [docs/evidence.md](docs/evidence.md), and every deliberate departure from The Odin Project is an ADR in [docs/adr](docs/adr).
+A coach session is read-only for your files. On Claude Code, invoking the coach registers a tool-level guard for the rest of the session: every tool call passes through it, and only reading tools, one plain call to a read-only dojo script, an append to the quiz log, and a review written by the mentor plugin's reviewer get through, so it cannot edit files even when asked, whether through an edit tool, a shell command or an MCP tool. On other agents the coach holds the same rule by instruction, and lesson zero tells the learner which applies. Every claim above has a citation in [docs/evidence.md](docs/evidence.md), and every deliberate departure from The Odin Project is an ADR in [docs/adr](docs/adr).
 
 ## What a workspace holds
 
@@ -107,7 +109,7 @@ skills/dojo/         formats, STYLE.md, TOKENS.md, scripts/, templates/  (the sh
 skills/dojo-plan/    one folder per command, each with agents/openai.yaml for Codex
 skills/dojo-next/
 skills/dojo-quiz/
-skills/dojo-coach/   plus coach-guard.ts, the coach's read-only guard hook
+skills/dojo-coach/   whose read-only guard is skills/dojo/scripts/guard.ts, shared with the mentor plugin
 skills/dojo-build/
 hooks/               hooks.json: the plugin-level WebFetch hook that records fetches
 tests/               node --test suite for the scripts

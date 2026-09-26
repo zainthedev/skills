@@ -2,11 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { decide, decideBash } from "../skills/dojo-coach/coach-guard.ts";
-import { SCRIPTS_DIR, TESTS_DIR, removeDir, tempDir } from "./helpers.ts";
+import { join } from "node:path";
+import { decide, decideBash, decideFile } from "../skills/dojo/scripts/guard.ts";
+import { SCRIPTS_DIR, removeDir, tempDir, tempWorkspace } from "./helpers.ts";
 
-const GUARD = resolve(TESTS_DIR, "..", "skills", "dojo-coach", "coach-guard.ts");
+const GUARD = join(SCRIPTS_DIR, "guard.ts");
 const LINT = join(SCRIPTS_DIR, "lint.ts");
 
 function run(stdin: string): { status: number | null; stdout: string; stderr: string } {
@@ -27,12 +27,12 @@ test("read-only tools pass and every other tool is denied, MCP tools included", 
     const decision = decide({ tool_name: tool, tool_input: { file_path: "/tmp/app.js", command: "x" } });
     assert.equal(decision.allow, false, tool);
   }
-  // The quiz log is written by quiz-log.ts, so no file tool gets an exception.
+  // The quiz log is written by quiz-log.ts, so it gets no file-tool exception.
   assert.equal(decide({ tool_name: "Write", tool_input: { file_path: "/ws/quiz-log.md" } }).allow, false);
   assert.equal(decide({}).allow, false);
 });
 
-test("a shell command is allowed only as one plain call to one of the coach's dojo scripts", () => {
+test("a shell command is allowed only as one plain call to one of the guard's dojo scripts", () => {
   assert.deepEqual(decideBash(`node ${LINT} /ws L01`, "/"), { allow: true });
   assert.deepEqual(decideBash(`node ${join(SCRIPTS_DIR, "context.ts")} /ws quiz 2`, "/"), { allow: true });
   assert.deepEqual(decideBash(`node ${join(SCRIPTS_DIR, "quiz-log.ts")} /ws --scope "section 2" --predicted 6 --recalled 4 --reread L03,L04`, "/"), { allow: true });
@@ -48,6 +48,7 @@ test("a shell command is allowed only as one plain call to one of the coach's do
     `node ${LINT} > /tmp/x`,
     `node ${join(SCRIPTS_DIR, "mark-done.ts")} /ws L01`,
     `node ${join(SCRIPTS_DIR, "checkpoint.ts")} /ws C01`,
+    `node ${join(SCRIPTS_DIR, "build-site.ts")} /ws --out src`,
     `node ${join(SCRIPTS_DIR, "does-not-exist.ts")}`,
     `node --eval "process.exit()"`,
     `python3 ${LINT}`,
@@ -55,6 +56,19 @@ test("a shell command is allowed only as one plain call to one of the coach's do
     "",
   ]) {
     assert.equal(decideBash(command, "/").allow, false, command);
+  }
+});
+
+test("file tools may write a review in a workspace's reviews/ and nothing else", () => {
+  // The reviewer is mentor's; its own tests cover the rest of this rule.
+  const ws = tempWorkspace();
+  try {
+    mkdirSync(join(ws, "reviews"));
+    assert.deepEqual(decideFile(join(ws, "reviews", "all.md"), "/"), { allow: true });
+    assert.equal(decideFile(join(ws, "lessons", "L01-what-node-is.md"), "/").allow, false);
+    assert.equal(decideFile(join(ws, "syllabus.md"), "/").allow, false);
+  } finally {
+    removeDir(ws);
   }
 });
 

@@ -1,0 +1,11 @@
+{
+  "name": "mentor",
+  "displayName": "Mentor",
+  "description": "A senior's code review that flags bugs, hand-rolled code and antipatterns, then makes you find each fix yourself.",
+  "author": {
+    "name": "Zain Hill"
+  },
+  "repository": "https://github.com/zainthedev/skills",
+  "license": "MIT",
+  "keywords": ["code-review", "mentoring", "learning", "coach", "junior-developer"]
+}
