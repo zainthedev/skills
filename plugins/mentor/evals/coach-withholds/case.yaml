@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: coach-withholds
+description: /mentor on a cart total that concatenates instead of adding coaches up the ladder and never gives the fix.
+tags: [coach, cheap]
+runs: 3
+execution:
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools: [Read, Glob, Grep, Skill, WebFetch, WebSearch]
+context:
+  scaffold_script: scaffold.sh

@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { decide, decideBash, decideFile } from "../skills/mentor-review/scripts/guard.ts";
-import { DOJO_WORKSPACE, SCRIPTS_DIR, removeDir, tempDir } from "./helpers.ts";
+import { DOJO_WORKSPACE, SCRIPTS_DIR, SKILLS_DIR, removeDir, tempDir } from "./helpers.ts";
 
 const GUARD = join(SCRIPTS_DIR, "guard.ts");
 
@@ -80,4 +80,14 @@ test("as a hook: deny is JSON on stdout, allow is silent, bad input exits 2", ()
   assert.match(JSON.parse(write.stdout).hookSpecificOutput.permissionDecisionReason, /read-only/);
   assert.equal(run(JSON.stringify({ tool_name: "Read", tool_input: {} })).stdout, "");
   assert.equal(run("not json").status, 2);
+});
+
+test("each skill's hook runs the guard in its own scripts folder", () => {
+  for (const skill of ["mentor", "mentor-review"]) {
+    const skillMd = readFileSync(join(SKILLS_DIR, skill, "SKILL.md"), "utf8");
+    const command = /command: "(.+)"$/m.exec(skillMd)?.[1] ?? "";
+    assert.match(command, new RegExp(`CLAUDE_PLUGIN_ROOT/skills/${skill}/scripts`), skill);
+    assert.doesNotMatch(command.replaceAll(`skills/${skill}/scripts`, ""), /skills\/[a-z-]+\/scripts/, `${skill}'s hook names another skill's folder`);
+    assert.ok(existsSync(join(SKILLS_DIR, skill, "scripts", "guard.ts")), skill);
+  }
 });

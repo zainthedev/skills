@@ -3,8 +3,9 @@
 // listed by a dojo course's site; and the dojo workspace check the reviewer
 // and the guard share. REVIEW-FORMAT.md is the format.
 //
-// Vendored: the mentor plugin owns this file and the dojo plugin carries a
-// byte-identical copy, which mentor's tests check. Edit mentor's, then copy.
+// Vendored: mentor-review owns this file; mentor's coach, for the guard, and
+// the dojo plugin carry byte-identical copies, which mentor's tests check.
+// Edit mentor-review's, then copy.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

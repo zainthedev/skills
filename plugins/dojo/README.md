@@ -60,7 +60,7 @@ Contributors working on the skills themselves use `scripts/link-skills.sh` at th
 | `/dojo-coach [what you're stuck on]` | Hints and questions up a four-rung ladder; never a solution; makes the session read-only for your files |
 | `/dojo-build [dir]` | Starts the course's local site again, for example after a restart; `/dojo-plan` starts it the first time |
 
-For a senior's review of your project code, the separate [mentor](../mentor) plugin's `/mentor-review` works inside a workspace: it checks the project's requirements, never gives an answer there, and the site lists its reviews.
+For a senior's review of your project code, the separate [mentor](../mentor) plugin's `/mentor-review` works inside a workspace: it checks the project's requirements, never gives an answer there, and the site lists its reviews. Its `/mentor` is this coach for any project outside a course, and hands back to `/dojo-coach` inside one.
 
 This page writes the short form. On Claude Code the documented form for a plugin command is namespaced, `/dojo:dojo-plan`; Codex uses `$dojo-plan`. A sixth skill, `dojo`, is not a command: it holds the formats, rules, scripts and token table the five share, and the agent loads it on its own when a directory holds a dojo `profile.md`.
 

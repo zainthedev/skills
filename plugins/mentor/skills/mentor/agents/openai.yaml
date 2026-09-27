@@ -1,0 +1,5 @@
+interface:
+  display_name: "Mentor: coach"
+  short_description: "A senior who coaches you to the fix for an error or bug"
+policy:
+  allow_implicit_invocation: false

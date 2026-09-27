@@ -8,7 +8,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const TESTS_DIR = dirname(fileURLToPath(import.meta.url));
-export const SCRIPTS_DIR = resolve(TESTS_DIR, "..", "skills", "mentor-review", "scripts");
+export const SKILLS_DIR = resolve(TESTS_DIR, "..", "skills");
+export const SCRIPTS_DIR = join(SKILLS_DIR, "mentor-review", "scripts");
 export const FIXTURES = join(TESTS_DIR, "fixtures");
 // A two-file dojo course, enough for the reviewer to recognise a workspace.
 export const DOJO_WORKSPACE = join(FIXTURES, "dojo-workspace");

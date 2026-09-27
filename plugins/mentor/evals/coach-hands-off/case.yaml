@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: coach-hands-off
+description: /mentor inside a dojo course workspace points at /dojo-coach and does not coach.
+tags: [coach, cheap]
+runs: 3
+execution:
+  max_turns: 8
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill]
+context:
+  scaffold_script: scaffold.sh

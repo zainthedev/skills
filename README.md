@@ -27,7 +27,7 @@ Add `--skill <name>` to skip the picker, or `--list` to see what is here.
 | Plugin | Skills | What it is |
 |--------|--------|------------|
 | [dojo](plugins/dojo) | `dojo`, `dojo-plan`, `dojo-next`, `dojo-quiz`, `dojo-coach`, `dojo-build` | Odin-Project-style learning courses for technical topics: curated free resources, projects, retrieval practice, and a coach that never gives the answer |
-| [mentor](plugins/mentor) | `mentor-review` | A senior's code review of a branch, pull request or files that flags bugs, hand-rolled code and antipatterns, then makes you find each fix |
+| [mentor](plugins/mentor) | `mentor`, `mentor-review` | A coach for any error or bug, and a senior's code review of a branch, pull request or files that flags bugs, hand-rolled code and antipatterns; both make you find each fix |
 
 A skill is one folder with a `SKILL.md`, in the Agent Skills format every listed agent reads. A plugin is the folder that groups related skills for a single Claude Code install. Skills that share scripts name one of their number as the root, so take that one along when you pick.
 

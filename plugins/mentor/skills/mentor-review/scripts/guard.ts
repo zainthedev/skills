@@ -1,5 +1,6 @@
 // PreToolUse hook registered on Claude Code for the rest of the session by dojo's coach and by
-// mentor's reviewer (dojo ADRs 0002 and 0018, mentor ADR 0001). Every tool call passes through it.
+// mentor's reviewer and coach (dojo ADRs 0002 and 0018, mentor ADRs 0001 and 0002). Every tool
+// call passes through it.
 // A short list of read-only tools is allowed; a shell command is allowed only when it is one plain
 // call to a script on the guard's list, inside the skill folder that owns it, which reads the
 // workspace or repository, or appends to or updates a record; a file tool is allowed only on a
@@ -8,8 +9,8 @@
 // Claude Code treats as a block, so a broken guard fails closed. Runs on Node 24+ or Bun.
 //
 // Vendored: dojo's skills/dojo/scripts/guard.ts and mentor's skills/mentor-review/scripts/guard.ts
-// are byte-identical, which mentor's tests check, so either skill works while the other's guard
-// is active in the same session. Edit one, then copy it to the other.
+// and skills/mentor/scripts/guard.ts are byte-identical, which mentor's tests check, so each skill
+// works while another's guard is active in the same session. Edit one, then copy it to the others.
 import { realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { isDojoWorkspace } from "./lib/review.ts";

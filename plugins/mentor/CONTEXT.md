@@ -1,6 +1,6 @@
 # Mentor
 
-The context for the `mentor` plugin: a senior's code review that makes a junior developer find each fix. This file is vocabulary only. Decisions live in `docs/adr/`.
+The context for the `mentor` plugin: a senior's code review and coaching that make a junior developer find each fix. This file is vocabulary only. Decisions live in `docs/adr/`.
 
 ## Language
 
@@ -10,7 +10,11 @@ _Avoid_: user, author, junior (as a term)
 
 **Reviewer**:
 The `/mentor-review` command: reads the learner's code as a senior reads a pull request and writes a review whose flags withhold every fix. Outside a dojo workspace it gives a flag's answer when asked outright; inside one, never.
-_Avoid_: mentor (that is the plugin), bot, linter
+_Avoid_: mentor (that is the plugin and the coach's command), bot, linter
+
+**Coach**:
+The `/mentor` command: takes the learner's error, bug or failing test and climbs the ladder until they state the cause and fix it. Never gives the answer. Inside a dojo workspace it hands off to dojo's coach, `/dojo-coach`.
+_Avoid_: tutor, assistant, debugger
 
 **Review**:
 The file the reviewer writes for one review scope: a summary, a table of flags with their status, and a section per flag. One per scope, updated by a second review of the same scope.
@@ -25,7 +29,7 @@ What a review covers: a branch against its merge-base, the staged changes, a pul
 _Avoid_: target, selection
 
 **Ladder**:
-The four rungs the reviewer climbs on a flag, one per message: what have you tried; a narrowing question; the exact resource section; the concept with a different example. A flag is rung 1.
+The four rungs the coach climbs on a problem and the reviewer on a flag, one per message: what have you tried; a narrowing question; the exact resource section; the concept with a different example. A flag is rung 1.
 _Avoid_: hint levels, escalation
 
 **Micro-action**:
@@ -33,16 +37,17 @@ The concrete next move in every flag and every reply, so the learner always has 
 _Avoid_: hint, tip, suggestion
 
 **Answer rule**:
-Which way the reviewer handles an outright request for a flag's answer: on explicit request, or never inside a dojo workspace. `review-scope.ts` prints it.
+Which way the reviewer handles an outright request for a flag's answer: on explicit request, or never inside a dojo workspace. `review-scope.ts` prints it. The coach has no answer rule: never.
 
 **Guard**:
-The PreToolUse hook the reviewer registers on Claude Code, which keeps the session read-only for the learner's code. Shared, byte for byte, with dojo's coach.
+The PreToolUse hook the coach and the reviewer register on Claude Code, which keeps the session read-only for the learner's code. Shared, byte for byte, with dojo's coach.
 
 **Vendored file**:
-A file this plugin ships as a byte-identical copy of one in the dojo plugin, or the reverse, so each plugin installs alone. A test keeps each pair identical.
+A file shipped as a byte-identical copy in another skill folder, in this plugin or dojo's, so each skill installs alone. A test keeps each pair identical.
 
 ## Relationships
 
 - The **Reviewer** writes one **Review** per **Review scope**; a **Review** holds at most seven open **Flags**.
 - Working a **Flag** climbs the **Ladder** from rung 2; the **Answer rule** decides what an outright request gets.
-- The **Guard** allows the **Reviewer**'s scripts and edits to the **Review**, and nothing else that writes.
+- The **Coach** climbs the **Ladder** from rung 1 on the learner's problem and writes no file.
+- The **Guard** allows the **Reviewer**'s scripts and edits to the **Review**, and nothing else that writes, whichever of the **Coach** and the **Reviewer** registered it.
