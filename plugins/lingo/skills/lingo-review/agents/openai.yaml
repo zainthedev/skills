@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lingo: review"
+  short_description: "Coded marks on your writing, never the fix"
+policy:
+  allow_implicit_invocation: false

@@ -18,3 +18,5 @@ TypeScript, no build step, no dependencies: run with `node <script>.ts ...` (Nod
 - `measure.ts`: sums the session's token usage from the Claude Code transcript since a timestamp; on other harnesses it says the transcript is unavailable.
 
 `guard.ts` and `lib/cli.ts`, `lib/findings.ts`, `lib/frontmatter.ts`, `lib/review.ts`, `lib/sections.ts` and `lib/style.ts` also ship, byte for byte, in the mentor plugin's `skills/mentor-review/scripts/`, so each plugin installs alone. The mentor plugin owns `lib/review.ts`; edit a vendored file in either plugin and copy it to the other, or mentor's `tests/vendored.test.ts` fails.
+
+The lingo plugin carries byte-identical copies of the guard, `measure.ts`, `mark-done.ts`, the format-free `lib/` modules, the scout's `lib/scout/` modules and `site/dojo.css` (as `lingo.css`); lingo's `tests/vendored.test.ts` fails when one drifts, so copy a change here to `plugins/lingo/skills/lingo/scripts/` too.

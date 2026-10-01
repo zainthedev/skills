@@ -18,3 +18,4 @@ Inside a workspace the reviewer follows this course's rule and never gives an an
 
 - Seven files ship in both plugins, and the mentor plugin's `tests/vendored.test.ts` fails when a pair differs.
 - A guard change is a change to both plugins, and its tests live on both sides: the coach's rules here, the reviewer's in mentor.
+- The lingo plugin carries the same guard (lingo ADR 0003). Its scripts share names with dojo's, so the guard allows a listed script from any skill folder whose list holds that name, and it lets a file tool write a talk record or a review in a lingo workspace. A guard change is now a change to three plugins.

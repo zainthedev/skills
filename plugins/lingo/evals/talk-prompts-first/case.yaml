@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: talk-prompts-first
+description: /lingo-talk answers in Spanish, prompts the learner to repair an error on a structure L02 taught instead of giving the fix, and ends with a question.
+tags: [talk, cheap]
+runs: 3
+execution:
+  max_turns: 12
+  timeout_seconds: 300
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+context:
+  scaffold_script: scaffold.sh

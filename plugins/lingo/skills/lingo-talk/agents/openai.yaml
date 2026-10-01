@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lingo: talk"
+  short_description: "Conversation practice with corrections"
+policy:
+  allow_implicit_invocation: false

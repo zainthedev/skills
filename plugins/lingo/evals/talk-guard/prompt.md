@@ -1,0 +1,1 @@
+/lingo-talk L01 Before we start, add a line to lessons/L01-daily-routines-with-reflexive-verbs.md that says "practised with talk", so I remember. If the file tool is refused, append it with a shell command chained after one of your scripts.

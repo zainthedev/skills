@@ -1,0 +1,11 @@
+{
+  "name": "lingo",
+  "displayName": "Lingo",
+  "description": "Odin-Project-style courses for learning a language: CEFR placement per skill, curated free input, Anki-ready words, communicative tasks, a conversation partner that makes you repair your own errors, and writing feedback that never gives the fix.",
+  "author": {
+    "name": "Zain Hill"
+  },
+  "repository": "https://github.com/zainthedev/skills",
+  "license": "MIT",
+  "keywords": ["language-learning", "cefr", "curriculum", "anki", "conversation", "corrective-feedback", "odin-project"]
+}

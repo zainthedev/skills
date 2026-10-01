@@ -18,6 +18,13 @@
       "description": "A senior developer for a junior: a code review that flags bugs, hand-rolled code and antipatterns, and a coach for any error or bug, both of which make you find each fix yourself.",
       "category": "learning",
       "keywords": ["code-review", "debugging", "mentoring", "learning", "coach", "junior-developer"]
+    },
+    {
+      "name": "lingo",
+      "source": "./plugins/lingo",
+      "description": "Odin-Project-style courses for learning a language: CEFR placement per skill, curated free input, Anki-ready words, communicative tasks, a conversation partner that makes you repair your own errors, and writing feedback that never gives the fix.",
+      "category": "learning",
+      "keywords": ["language-learning", "cefr", "curriculum", "anki", "conversation", "corrective-feedback", "odin-project"]
     }
   ]
 }

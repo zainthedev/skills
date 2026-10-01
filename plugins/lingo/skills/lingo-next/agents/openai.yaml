@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lingo: next"
+  short_description: "Generate the next lesson, task or checkpoint"
+policy:
+  allow_implicit_invocation: false

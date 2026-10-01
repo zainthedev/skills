@@ -1,0 +1,3 @@
+interface:
+  display_name: "Lingo"
+  short_description: "Formats, rules and scripts of a lingo workspace"

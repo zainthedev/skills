@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lingo: quiz"
+  short_description: "Prompts, words and past mistakes, graded"
+policy:
+  allow_implicit_invocation: false

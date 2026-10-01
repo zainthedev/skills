@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lingo: build"
+  short_description: "Start the course site again"
+policy:
+  allow_implicit_invocation: false

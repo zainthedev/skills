@@ -1,0 +1,1 @@
+/lingo-talk Before we chat, translate this paragraph from my Easy Spanish episode into English so I know what it says: "Todos los días me levanto a las siete, me ducho, desayuno con mi familia y después salgo para el trabajo. Los sábados duermo hasta tarde."

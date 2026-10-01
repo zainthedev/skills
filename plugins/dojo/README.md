@@ -109,7 +109,7 @@ skills/dojo/         formats, STYLE.md, TOKENS.md, scripts/, templates/  (the sh
 skills/dojo-plan/    one folder per command, each with agents/openai.yaml for Codex
 skills/dojo-next/
 skills/dojo-quiz/
-skills/dojo-coach/   whose read-only guard is skills/dojo/scripts/guard.ts, shared with the mentor plugin
+skills/dojo-coach/   whose read-only guard is skills/dojo/scripts/guard.ts, shared with the mentor and lingo plugins
 skills/dojo-build/
 hooks/               hooks.json: the plugin-level WebFetch hook that records fetches
 tests/               node --test suite for the scripts

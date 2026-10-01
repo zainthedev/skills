@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lingo: plan"
+  short_description: "Start a lingo language course"
+policy:
+  allow_implicit_invocation: false

@@ -12,6 +12,7 @@ On Claude Code, use the plugin: it carries hooks that skills.sh cannot install. 
 claude plugin marketplace add zainthedev/skills
 claude plugin install dojo@zainhill
 claude plugin install mentor@zainhill
+claude plugin install lingo@zainhill
 ```
 
 **Codex, Cursor, Copilot and other agents**: [skills.sh](https://skills.sh) copies the skill folders you choose into your project, for the agents you choose.
@@ -28,6 +29,7 @@ Add `--skill <name>` to skip the picker, or `--list` to see what is here.
 |--------|--------|------------|
 | [dojo](plugins/dojo) | `dojo`, `dojo-plan`, `dojo-next`, `dojo-quiz`, `dojo-coach`, `dojo-build` | Odin-Project-style learning courses for technical topics: curated free resources, projects, retrieval practice, and a coach that never gives the answer |
 | [mentor](plugins/mentor) | `mentor`, `mentor-review` | A coach for any error or bug, and a senior's code review of a branch, pull request or files that flags bugs, hand-rolled code and antipatterns; both make you find each fix |
+| [lingo](plugins/lingo) | `lingo`, `lingo-plan`, `lingo-next`, `lingo-talk`, `lingo-review`, `lingo-quiz`, `lingo-coach`, `lingo-build` | dojo for learning a language: CEFR placement per skill, curated free input, Anki-ready words, communicative tasks, a conversation partner that makes you repair your own errors, and writing feedback that never gives the fix |
 
 A skill is one folder with a `SKILL.md`, in the Agent Skills format every listed agent reads. A plugin is the folder that groups related skills for a single Claude Code install. Skills that share scripts name one of their number as the root, so take that one along when you pick.
 
